@@ -2,7 +2,10 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: '/tigress/HSC/DR/s18a_wide' 
+data_dir: '/projects/MERIAN/repo'
+collections: 'HSC/runs/RC2/w_2022_04/DM-33402'
+skymap: 'hsc_rings_v1'
+instrument: 'HSC'
 hugs_io: '/scratch/gpfs/jiaxuanl/Data/HSC/hugs-io'
  
 min_good_data_frac: 0.5

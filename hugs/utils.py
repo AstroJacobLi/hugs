@@ -13,13 +13,13 @@ from collections import namedtuple
 
 project_dir = os.path.dirname(os.path.dirname(__file__))
 default_config_fn = os.path.join(
-    project_dir, 'pipe-configs/default_config.yml')
+    project_dir, 'pipe-configs/hugs-config.yml')
 andy_mask_path = '/tigress/HSC/HSC/rerun/goulding/S18A_STARMASK/IMAGE_MASKS'
 
 pixscale = 0.168
 zpt = 27.0
 
-#Extinction correction factor for HSC
+# Extinction correction factor for HSC
 #A_lambda = Coeff * E(B-V)
 ExtCoeff = namedtuple('ExtCoeff', 'g r i z y')
 ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
@@ -87,7 +87,7 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     # generate the coords within annulus in bbox
     ctr_shift = center - ul
     bb_row, bb_col = np.ogrid[0:float(bb_shape[0]), 0:float(bb_shape[1])]
-    radius = np.sqrt((bb_row-ctr_shift[0])**2 + (bb_col-ctr_shift[1])**2)
+    radius = np.sqrt((bb_row - ctr_shift[0])**2 + (bb_col - ctr_shift[1])**2)
     row_idx, col_idx = np.nonzero((radius >= r_in) & (radius < r_out))
 
     # shift back to original coords
@@ -122,17 +122,17 @@ def embed_slices(center, arr_shape, img_shape):
     arr_shape = np.asarray(arr_shape)
     img_shape = np.asarray(img_shape)
 
-    assert np.alltrue(arr_shape%2 != np.array([0,0]))
+    assert np.alltrue(arr_shape % 2 != np.array([0, 0]))
 
-    imin = center - arr_shape//2
-    imax = center + arr_shape//2 
+    imin = center - arr_shape // 2
+    imax = center + arr_shape // 2
 
-    amin = (imin < np.array([0,0]))*(-imin)
-    amax = arr_shape*(imax<=img_shape-1) +\
-           (arr_shape-(imax-(img_shape-1)))*(imax>img_shape-1)
+    amin = (imin < np.array([0, 0])) * (-imin)
+    amax = arr_shape * (imax <= img_shape - 1) +\
+        (arr_shape - (imax - (img_shape - 1))) * (imax > img_shape - 1)
 
     imin = np.maximum(imin, np.array([0, 0]))
-    imax = np.minimum(imax, np.array(img_shape)-1)
+    imax = np.minimum(imax, np.array(img_shape) - 1)
     imax += 1
 
     img_slice = np.s_[imin[0]:imax[0], imin[1]:imax[1]]
@@ -180,11 +180,11 @@ def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
     exp : lsst.afw.image.ExposureF  
         HSC exposure for given data ID.
     """
-    if type(data_id)==str:
+    if type(data_id) == str:
         exp = afwImage.ExposureF(data_id)
-    elif type(data_id)==afwImage.ExposureF:
+    elif type(data_id) == afwImage.ExposureF:
         exp = data_id
-    elif type(data_id)==dict:
+    elif type(data_id) == dict:
         for key in ['tract', 'patch', 'filter']:
             assert key in data_id.keys()
         if butler is None:
@@ -218,7 +218,7 @@ def remove_mask_planes(mask, planes):
     Parameters
     ----------
     mask : lsst.afw.image.MaskU
-	Bit mask.
+        Bit mask.
     planes : list
         Planes to clear
     """
@@ -258,8 +258,8 @@ def check_random_state(seed):
         return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
-    if type(seed)==list:
-        if type(seed[0])==int:
+    if type(seed) == list:
+        if type(seed[0]) == int:
             return np.random.RandomState(seed)
 
     raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
@@ -287,7 +287,7 @@ def calc_mask_bit_fracs(exp, planes=['SMALL', 'CLEANED', 'BRIGHT_OBJECT']):
     for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             npix_p = (msk_arr & getBitVal(p) != 0).sum()
-            fracs.update({p.lower()+'_frac': npix_p/npix})
+            fracs.update({p.lower() + '_frac': npix_p / npix})
     return fracs
 
 
@@ -295,7 +295,7 @@ def check_astropy_to_pandas(cat):
     """
     Change astropy table to pandas dataframe if necessary.
     """
-    if type(cat)==Table:
+    if type(cat) == Table:
         cat = cat.to_pandas()
     return cat
 
@@ -347,7 +347,7 @@ def make_noise_image(masked_image, random_state=None):
     stats = task.run(masked_image)
     back_rms = stats.stdev
     dims = masked_image.getDimensions()
-    noise_array = back_rms*rng.randn(dims[1], dims[0])
+    noise_array = back_rms * rng.randn(dims[1], dims[0])
     return noise_array
 
 
@@ -370,7 +370,7 @@ def solid_angle(ra_lim, dec_lim):
     ra_lim = np.deg2rad(np.asarray(ra_lim))
     dec_lim = np.deg2rad(np.asarray(dec_lim))
     dsin_dec = np.sin(dec_lim[1]) - np.sin(dec_lim[0])
-    area = ra_lim.ptp() * dsin_dec * (180.0/np.pi)**2
+    area = ra_lim.ptp() * dsin_dec * (180.0 / np.pi)**2
     return area
 
 
@@ -406,12 +406,12 @@ def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
     https://en.wikipedia.org/wiki/Great-circle_distance.
     """
 
-    deg2rad = np.pi/180.0
+    deg2rad = np.pi / 180.0
 
-    ra1 = ra1*deg2rad
-    dec1 = dec1*deg2rad
-    ra2 = ra2*deg2rad
-    dec2 = dec2*deg2rad
+    ra1 = ra1 * deg2rad
+    dec1 = dec1 * deg2rad
+    ra2 = ra2 * deg2rad
+    dec2 = dec2 * deg2rad
 
     sin_dRA = np.sin(ra2 - ra1)
     cos_dRA = np.cos(ra2 - ra1)
@@ -420,15 +420,15 @@ def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
     cos_dec1 = np.cos(dec1)
     cos_dec2 = np.cos(dec2)
 
-    num1 = cos_dec2*sin_dRA
-    num2 = cos_dec1*sin_dec2 - sin_dec1*cos_dec2*cos_dRA
-    denom = sin_dec1*sin_dec2 + cos_dec1*cos_dec2*cos_dRA
-    sep = np.arctan2(np.sqrt(num1*num1 + num2*num2), denom)
+    num1 = cos_dec2 * sin_dRA
+    num2 = cos_dec1 * sin_dec2 - sin_dec1 * cos_dec2 * cos_dRA
+    denom = sin_dec1 * sin_dec2 + cos_dec1 * cos_dec2 * cos_dRA
+    sep = np.arctan2(np.sqrt(num1 * num1 + num2 * num2), denom)
 
-    conversion = {'radian':1.0, 
-                  'arcsec':206264.806, 
-                  'arcmin':206264.806/60.0, 
-                  'degree':180./np.pi}
+    conversion = {'radian': 1.0,
+                  'arcsec': 206264.806,
+                  'arcmin': 206264.806 / 60.0,
+                  'degree': 180. / np.pi}
 
     sep *= conversion[sepunits]
 
@@ -459,13 +459,13 @@ def ra_dec_to_xyz(ra, dec):
     -------
     x, y, z : ndarrays
     """
-    sin_ra = np.sin(ra*np.pi/180.)
-    cos_ra = np.cos(ra*np.pi/180.)
+    sin_ra = np.sin(ra * np.pi / 180.)
+    cos_ra = np.cos(ra * np.pi / 180.)
 
-    sin_dec = np.sin(np.pi/2-dec*np.pi/180.)
-    cos_dec = np.cos(np.pi/2-dec*np.pi/180.)
+    sin_dec = np.sin(np.pi / 2 - dec * np.pi / 180.)
+    cos_dec = np.cos(np.pi / 2 - dec * np.pi / 180.)
 
-    return (cos_ra*sin_dec, sin_ra*sin_dec, cos_dec)
+    return (cos_ra * sin_dec, sin_ra * sin_dec, cos_dec)
 
 
 def angular_dist_to_euclidean_dist(theta, r=1):
@@ -482,7 +482,7 @@ def angular_dist_to_euclidean_dist(theta, r=1):
     d : float or ndarray
         Euclidean distance
     """
-    d = 2*r*np.sin(0.5*theta*np.pi/180.)
+    d = 2 * r * np.sin(0.5 * theta * np.pi / 180.)
     return d
 
 
@@ -500,5 +500,5 @@ def euclidean_dist_to_angular_dist(d, r=1):
     theta : float or ndarray
         Angular distance.
     """
-    theta = 2*np.arcsin(d/r/2.)*180./np.pi
+    theta = 2 * np.arcsin(d / r / 2.) * 180. / np.pi
     return theta
