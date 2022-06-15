@@ -5,10 +5,11 @@ import os
 import os.path as op
 import subprocess
 
-from ._settings import PARAMETERS      # parameter file 
+from ._settings import PARAMETERS      # parameter file
 from ._settings import SEX_CONFIG_DIR  # config directory
 
 __all__ = ['Wrapper']
+
 
 class Wrapper(object):
     """
@@ -25,7 +26,7 @@ class Wrapper(object):
     -----
         This wrapper was written for SExtractor version 2.19.5.
     """
-    
+
     def __init__(self, config={}, io_dir=''):
 
         self._config = config
@@ -39,7 +40,7 @@ class Wrapper(object):
         """
         return self._config
 
-    def get_io_dir(self, join=None): 
+    def get_io_dir(self, join=None):
         """
         Return the sextractor io directory.
 
@@ -85,21 +86,22 @@ class Wrapper(object):
             Prefix to add to the output image names, which 
             by default are image_type.fits
         """
-        imgtypes = {'b':'BACKGROUND',
-                    '-b':'-BACKGROUND',
-                    'f':'FILTERED',
-                    'a':'APERTURES',
-                    's':'SEGMENTATION',
-                    'o':'OBJECTS',
-                    '-o':'-OBJECTS',
-                    'brms':'BACKGROUND_RMS',
-                    'mb':'MINIBACKGROUND',
-                    'mbrms':'MINIBACK_RMS'}
-        which = list(imgtypes.keys()) if which=='all' else which
+        imgtypes = {'b': 'BACKGROUND',
+                    '-b': '-BACKGROUND',
+                    'f': 'FILTERED',
+                    'a': 'APERTURES',
+                    's': 'SEGMENTATION',
+                    'o': 'OBJECTS',
+                    '-o': '-OBJECTS',
+                    'brms': 'BACKGROUND_RMS',
+                    'mb': 'MINIBACKGROUND',
+                    'mbrms': 'MINIBACK_RMS'}
+        which = list(imgtypes.keys()) if which == 'all' else which
         which = which if type(which) is list else [which]
         for val in list(imgtypes.values()):
-            imgtypes.update({val:val})
-        fn = [prefix+imgtypes[w].replace('-','bcksub-')+'.fits' for w in which]
+            imgtypes.update({val: val})
+        fn = [
+            prefix + imgtypes[w].replace('-', 'bcksub-') + '.fits' for w in which]
         for i in range(len(fn)):
             fn[i] = self.get_io_dir(fn[i])
         checkimg_names = ','.join(fn)
@@ -117,7 +119,7 @@ class Wrapper(object):
         fn : string, optional
             Config file name. 
         """
-        fn = op.join(self._io_dir, fn) 
+        fn = op.join(self._io_dir, fn)
         out = open(fn, 'w')
         for key, val in self.config.items():
             print('{:<16} {:<16}'.format(k, v))
@@ -136,14 +138,16 @@ class Wrapper(object):
             Catalog name. 
         """
 
-        cat_fn = cat_fn if cat_fn else self.get_io_dir('sex.cat') 
+        cat_fn = cat_fn if cat_fn else self.get_io_dir('sex.cat')
         default_config_fn = op.join(SEX_CONFIG_DIR, 'hugs-default.sex')
 
-        cmd = 'sex -c {} {}'.format(default_config_fn, img_fn)
-        cmd += ' -CATALOG_NAME '+cat_fn
+        cmd = '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/src/sex -c {} {}'.format(
+            default_config_fn, img_fn)
+        # cmd = 'sex -c {} {}'.format(default_config_fn, img_fn)
+        cmd += ' -CATALOG_NAME ' + cat_fn
 
         for key, val in self.config.items():
-            cmd += ' -'+key+' '+str(val)
+            cmd += ' -' + key + ' ' + str(val)
 
-        print('\nrunning', '\n-------\n'+cmd+'\n')
+        print('\nrunning', '\n-------\n' + cmd + '\n')
         subprocess.call(cmd, shell=True)

@@ -36,6 +36,7 @@ thresh_high:
 
 clean:
     max_frac_high_thresh: 0.15  # per footprint
+    min_pix_low_thresh: 3 psf sigma  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 10.0
         

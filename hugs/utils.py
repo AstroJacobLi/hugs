@@ -49,7 +49,7 @@ def get_dust_map():
     sfdmap can be downloaded here http://github.com/kbarbary/sfdmap.
     """
     import sfdmap
-    dustmap = sfdmap.SFDMap()
+    dustmap = sfdmap.SFDMap("/scratch/gpfs/jiaxuanl/Data/SFD/")
     return dustmap
 
 

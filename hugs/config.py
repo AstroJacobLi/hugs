@@ -48,12 +48,13 @@ class PipeConfig(object):
 
         self.data_dir = rerun_path if rerun_path else params['data_dir']
         self.collections = params['collections']
+        self.skymap = params['skymap']
         self.hugs_io = params['hugs_io']
         self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
         self.inject_synths = params['inject_synths']
         self.coadd_label = params.pop('coadd_label', 'deepCoadd_calexp')
-        self.use_andy_mask = params.pop('use_andy_mask', True)
+        self.use_andy_mask = params.pop('use_andy_mask', False)
         if self.inject_synths:
             self.synth_cat_type = params['synth_cat_type']
             self.synth_cat_fn = params.pop('synth_cat_fn', None)
@@ -142,7 +143,7 @@ class PipeConfig(object):
                 # Update lsstpipe to gen3 mode
                 import lsst.daf.butler as dafButler
                 self._butler = dafButler.Butler(
-                    self.data_dir, collections=self.collections)
+                    self.data_dir, collections=self.collections, skymap=self.skymap)
         return self._butler
 
     @ property
@@ -260,6 +261,7 @@ class PipeConfig(object):
                              format(self.clean['rgrow']))
 
         # sextractor parameter file
-        fn = '{}-{}-{}-{}.params'.format(
-            tract, patch[0], patch[-1], self.run_name)
+        # fn = '{}-{}-{}-{}.params'.format(
+        #     tract, patch[0], patch[-1], self.run_name)
+        fn = f'{tract}-{patch}.params'
         self.sex_config['PARAMETERS_NAME'] = os.path.join(self.sex_io_dir, fn)

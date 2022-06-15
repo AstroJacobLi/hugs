@@ -22,16 +22,16 @@ from astropy.stats import gaussian_sigma_to_fwhm, gaussian_fwhm_to_sigma
 dustmap = utils.get_dust_map()
 
 __all__ = [
-    'image_threshold', 
-    'clean', 
+    'image_threshold',
+    'clean',
     'clean_use_hsc_mask',
-    'remove_small_sources_thresholding', 
+    'remove_small_sources_thresholding',
     'detect_sources',
     'measure_morphology_metrics'
 ]
 
 
-def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
+def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
                     rgrow=None, isogrow=False, plane_name='', mask=None,
                     clear_mask=True):
     """
@@ -78,8 +78,8 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def clean(exposure, fpset_low, name_high='THRESH_HIGH', 
-          max_frac_high_thresh=0.15, rgrow=None, random_state=None, 
+def clean(exposure, fpset_low, name_high='THRESH_HIGH',
+          max_frac_high_thresh=0.15, rgrow=None, random_state=None,
           bright_object_mask=True, min_pix_low_thresh=0):
     """
     Clean image of bright sources and associated diffuse regions by 
@@ -108,7 +108,7 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH',
     exp_clean : lsst.afw.ExposureF 
         The cleaned exposure object. 
     """
-    
+
     # generate array of gaussian noise
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
@@ -120,9 +120,9 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH',
     for fp in fpset_low.getFootprints():
         hfp = afwDet.HeavyFootprintF(fp, mi)
         pix = hfp.getMaskArray()
-        bits_hi = (pix & mask.getPlaneBitMask(name_high)!=0).sum()
-        if bits_hi>0:
-            ratio = bits_hi/float(fp.getArea())
+        bits_hi = (pix & mask.getPlaneBitMask(name_high) != 0).sum()
+        if bits_hi > 0:
+            ratio = bits_hi / float(fp.getArea())
             if ratio > max_frac_high_thresh:
                 fp_list.append(fp)
         else:
@@ -145,14 +145,14 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH',
     return exp_clean
 
 
-def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None, 
+def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None,
                        random_state=None, bright_object_mask=True):
 
     # generate array of gaussian noise
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     noise_array = utils.make_noise_image(mi, random_state)
-    
+
     threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
     fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)
 
@@ -160,9 +160,9 @@ def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None,
     for fp in fp_det.getFootprints():
         hfp = afwDet.HeavyFootprintF(fp, mi)
         pix = hfp.getMaskArray()
-        check = (pix & mask.getPlaneBitMask(ref_plane)!=0).sum()
+        check = (pix & mask.getPlaneBitMask(ref_plane) != 0).sum()
         if check > 0:
-            fp_list.append(fp)     
+            fp_list.append(fp)
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
     fpset_replace.setFootprints(fp_list)
     if rgrow:
@@ -180,7 +180,7 @@ def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None,
     return exp_clean
 
 
-def remove_small_sources_thresholding(exposure, min_radius_arcsec, 
+def remove_small_sources_thresholding(exposure, min_radius_arcsec,
                                       random_state=None):
 
     mi = exposure.getMaskedImage()
@@ -189,12 +189,12 @@ def remove_small_sources_thresholding(exposure, min_radius_arcsec,
 
     threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
     fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)
-    area_min = np.pi * (min_radius_arcsec / utils.pixscale)**2 
+    area_min = np.pi * (min_radius_arcsec / utils.pixscale)**2
 
     fp_list = []
     for fp in fp_det.getFootprints():
         if fp.getArea() < area_min:
-            fp_list.append(fp)     
+            fp_list.append(fp)
     fp_small = afwDet.FootprintSet(mi.getBBox())
     fp_small.setFootprints(fp_list)
     mask.addMaskPlane('SMALL')
@@ -209,7 +209,7 @@ def remove_small_sources_thresholding(exposure, min_radius_arcsec,
     return exp_clean
 
 
-def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None, 
+def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
                    delete_created_files=True, label='hugs',
                    original_fn=None):
     """
@@ -244,7 +244,7 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
 
     detect_band = exp.getFilter().getName().lower()
     # some bands have numbers --> get the relevant letter
-    detect_band = [b for b in detect_band if b in 'gri'][0] 
+    detect_band = [b for b in detect_band if b in 'gri'][0]
     exp_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, detect_band))
 
     # HACK: work around strange new bug related to SEXtractor
@@ -263,20 +263,20 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         if original_fn is None:
             dual_exp.writeFits(dual_fn)
         else:
-            fn = original_fn.replace('HSC-'+detect_band.upper(), 
-                                     'HSC-'+meas_band.upper())
+            fn = original_fn.replace('HSC-' + detect_band.upper(),
+                                     'HSC-' + meas_band.upper())
             header = fits.getheader(fn, ext=1)
-            fits.writeto(dual_fn, dual_exp.getImage().getArray(), header, 
+            fits.writeto(dual_fn, dual_exp.getImage().getArray(), header,
                          overwrite=True)
 
-        run_fn = exp_fn+'[1],'+dual_fn+'[1]'
+        run_fn = exp_fn + '[1],' + dual_fn + '[1]'
         cat_label = 'sex-{}-{}-{}'.format(label, detect_band, meas_band)
     else:
         meas_band = detect_band
         cat_label = 'sex-{}-{}'.format(label, detect_band)
-        run_fn = exp_fn+'[1]'
+        run_fn = exp_fn + '[1]'
 
-    cat_fn = sw.get_io_dir(cat_label+'.cat')
+    cat_fn = sw.get_io_dir(cat_label + '.cat')
 
     #########################################################
     # run SExtactor and get catalog
@@ -285,33 +285,33 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     sw.run(run_fn, cat_fn=cat_fn)
     cat = sextractor.read_cat(sw.get_io_dir(cat_fn))
 
-    if len(cat)>0:
+    if len(cat) > 0:
 
         #########################################################
         # only save positions from the primary detection band
         #########################################################
 
         detect_band_only = [
-            'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 'FLAGS', 
-            'PETRO_RADIUS', 'THETA_IMAGE', 'A_IMAGE', 'B_IMAGE', 
+            'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 'FLAGS',
+            'PETRO_RADIUS', 'THETA_IMAGE', 'A_IMAGE', 'B_IMAGE',
             'ELLIPTICITY', 'KRON_RADIUS'
         ]
 
         ebv = dustmap.ebv(cat['ALPHA_J2000'], cat['DELTA_J2000'])
 
-        if meas_band==detect_band:
+        if meas_band == detect_band:
             x0, y0 = exp.getXY0()
             cat['X_IMAGE'] -= 1
             cat['Y_IMAGE'] -= 1
-            cat['X_HSC'] = cat['X_IMAGE'] + x0 
-            cat['Y_HSC'] = cat['Y_IMAGE'] + y0 
+            cat['X_HSC'] = cat['X_IMAGE'] + x0
+            cat['Y_HSC'] = cat['Y_IMAGE'] + y0
             detect_band_only.append('X_HSC')
             detect_band_only.append('Y_HSC')
         else:
             cat.remove_columns(detect_band_only)
 
         #########################################################
-        # rename columns, change units of flux_radius and 
+        # rename columns, change units of flux_radius and
         # fwhm_image to arcsec, add extinction params
         #########################################################
 
@@ -320,27 +320,27 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         cat.rename_column('FLUX_RADIUS', 'FLUX_RADIUS_0')
 
         for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
-            cat.rename_column('MAG_APER_'+str(i), 'mag_ap'+str(i))
-            cat.rename_column('MAGERR_APER_'+str(i), 'magerr_ap'+str(i))
-        
+            cat.rename_column('MAG_APER_' + str(i), 'mag_ap' + str(i))
+            cat.rename_column('MAGERR_APER_' + str(i), 'magerr_ap' + str(i))
+
         for i, frac in enumerate(sex_config['PHOT_FLUXFRAC'].split(',')):
             frac = str(int(100 * float(frac)))
-            cat.rename_column('FLUX_RADIUS_'+str(i), 'flux_radius_'+frac)
-            cat['flux_radius_'+frac] *= utils.pixscale
+            cat.rename_column('FLUX_RADIUS_' + str(i), 'flux_radius_' + frac)
+            cat['flux_radius_' + frac] *= utils.pixscale
 
-        cat['FWHM_IMAGE'] = cat['FWHM_IMAGE']*utils.pixscale
+        cat['FWHM_IMAGE'] = cat['FWHM_IMAGE'] * utils.pixscale
         cat.rename_column('FWHM_IMAGE', 'FWHM')
 
         for name in cat.colnames:
-            if name not in detect_band_only: 
-                cat.rename_column(name, name.lower()+'_'+meas_band)
+            if name not in detect_band_only:
+                cat.rename_column(name, name.lower() + '_' + meas_band)
             else:
                 cat.rename_column(name, name.lower())
-        if meas_band==detect_band:
+        if meas_band == detect_band:
             cat.rename_column('alpha_j2000', 'ra')
             cat.rename_column('delta_j2000', 'dec')
             cat['ebv'] = ebv
-        cat['A_'+meas_band] = ebv*getattr(utils.ext_coeff, meas_band)
+        cat['A_' + meas_band] = ebv * getattr(utils.ext_coeff, meas_band)
 
     #########################################################
     # delete files created by and for sextractor
@@ -369,18 +369,18 @@ def measure_morphology_metrics(image, sources, scale_size=3):
     for src in sources:
         try:
             centroid = [src['x_image'], src['y_image']]
-            cutout = Cutout2D(image, 
-                              centroid, 
-                              src['flux_radius_65_g'] * scale_size / pixscale) 
+            cutout = Cutout2D(image,
+                              centroid,
+                              src['flux_radius_65_g'] * scale_size / pixscale)
             x_shift = cutout.center_original[0] - cutout.center_cutout[0]
             y_shift = cutout.center_original[1] - cutout.center_cutout[1]
             centroid = [src['x_image'] - x_shift, src['y_image'] - y_shift]
 
-            morph = Morphology(cutout.data, 
-                               centroid, 
-                               src['a_image'], 
-                               src['b_image'], 
-                               src['ellipticity'], 
+            morph = Morphology(cutout.data,
+                               centroid,
+                               src['a_image'],
+                               src['b_image'],
+                               src['ellipticity'],
                                src['theta_image'])
 
             _, circ_mean, ann_mean = morph.autocorr(1.5)
@@ -413,6 +413,6 @@ def measure_morphology_metrics(image, sources, scale_size=3):
 
     sources['acorr_peak'] = acorr_peak
     sources['acorr_bkgd'] = acorr_bkgd
-    acorr_bkgd =  np.array(acorr_bkgd)
-    acorr_bkgd[acorr_bkgd==0] = np.nan
+    acorr_bkgd = np.array(acorr_bkgd)
+    acorr_bkgd[acorr_bkgd == 0] = np.nan
     sources['acorr_ratio'] = np.array(acorr_peak) / acorr_bkgd
