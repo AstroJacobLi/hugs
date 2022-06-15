@@ -119,7 +119,7 @@ def run(cfg, reset_mask_planes=False):
         exp_clean = prim.clean(cfg.exp[cfg.band_detect],
                                fpset_low,
                                **cfg.clean)
-
+        return exp_clean, cfg
         ############################################################
         # Remove small sources using HSC pipeline detection map
         ############################################################
