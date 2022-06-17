@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
-import os, sys
+import os
+import sys
 import logging
 import yaml
 import numpy as np
@@ -36,7 +37,7 @@ class PipeConfig(object):
         Label for this pipeline run.
     """
 
-    def __init__(self, config_fn=None, tract=None, patch=None, 
+    def __init__(self, config_fn=None, tract=None, patch=None,
                  log_level='info', random_state=None, log_fn=None,
                  run_name='hugs', rerun_path=None):
 
@@ -45,17 +46,17 @@ class PipeConfig(object):
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f, Loader=yaml.FullLoader)
 
-        self.data_dir = rerun_path if rerun_path else params['data_dir'] 
+        self.data_dir = rerun_path if rerun_path else params['data_dir']
         self.hugs_io = params['hugs_io']
         self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
         self.inject_synths = params['inject_synths']
-        self.coadd_label  = params.pop('coadd_label', 'deepCoadd_calexp')
+        self.coadd_label = params.pop('coadd_label', 'deepCoadd_calexp')
         self.use_andy_mask = params.pop('use_andy_mask', True)
         if self.inject_synths:
             self.synth_cat_type = params['synth_cat_type']
             self.synth_cat_fn = params.pop('synth_cat_fn', None)
-            self.synth_check_masks = params.pop('synth_check_masks', 
+            self.synth_check_masks = params.pop('synth_check_masks',
                                                 ['BRIGHT_OBJECT'])
             self.synth_sersic_params = params.pop('synth_params', {})
             self.synth_image_params = params.pop('synth_image_params', {})
@@ -78,12 +79,14 @@ class PipeConfig(object):
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
 
-        self.hsc_small_sources_r_max = params.pop('hsc_small_sources_r_max', None)
+        self.hsc_small_sources_r_max = params.pop(
+            'hsc_small_sources_r_max', None)
 
         # setup for sextractor
         sex_setup = params['sextractor']
         self.sex_config = sex_setup['config']
-        self.sex_config['PHOT_APERTURES'] = '3,4,5,6,7,8,16,32,42,54' # in default
+        # in default
+        self.sex_config['PHOT_APERTURES'] = '3,4,5,6,7,8,16,32,42,54'
         self.sex_config['PHOT_FLUXFRAC'] = '0.1,0.2,0.3,0.4,0.5,0.6,0.65,0.7,0.8,0.9'
         self.delete_created_files = sex_setup['delete_created_files']
         self.sex_io_dir = sex_setup['sex_io_dir']
@@ -91,13 +94,13 @@ class PipeConfig(object):
 
         self.circ_aper_radii = self.sex_config['PHOT_APERTURES'].split(',')
         self.circ_aper_radii = [
-            utils.pixscale*float(a)/2 for a in self.circ_aper_radii] 
+            utils.pixscale * float(a) / 2 for a in self.circ_aper_radii]
         self.num_apertures = len(self.circ_aper_radii)
 
         # setup for sep
         self.sep_steps = params.pop('sep_steps', None)
         if self.sep_steps is not None:
-            sep_point_sources = params['sep_steps']['sep_point_sources']
+            sep_point_sources = self.sep_steps['sep_point_sources']
             self.sep_min_radius = sep_point_sources.pop('min_radius', 2.0)
             self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
 
@@ -146,7 +149,7 @@ class PipeConfig(object):
         if self._timer is None:
             self._timer = time.time()
         else:
-            delta_time = (time.time() - self._timer)/60.0
+            delta_time = (time.time() - self._timer) / 60.0
             self._timer = time.time()
             return delta_time
 
@@ -158,8 +161,8 @@ class PipeConfig(object):
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
             utils.remove_mask_planes(mask, ['SMALL',
-                                            'CLEANED', 
-                                            'THRESH_HIGH', 
+                                            'CLEANED',
+                                            'THRESH_HIGH',
                                             'THRESH_LOW'])
 
     def set_patch_id(self, tract, patch):
@@ -173,7 +176,7 @@ class PipeConfig(object):
         patch : str
             HSC patch.
         """
-        
+
         self.tract = tract
         self.patch = patch
         self.setup_logger(tract, patch)
@@ -193,35 +196,35 @@ class PipeConfig(object):
                 self.synth_cat = GlobalSynthCat(cat_fn=self.synth_cat_fn)
             elif self.synth_cat_type == 'on-the-fly':
                 self.synth_cat = generate_patch_cat(
-                    sersic_params=self.synth_sersic_params, 
+                    sersic_params=self.synth_sersic_params,
                     **self.synth_image_params)
 
-            self.exp = SynthHugsExposure(self.synth_cat, tract, patch, 
-                                         self.bands, self.butler, 
-                                         rerun=self.data_dir, 
+            self.exp = SynthHugsExposure(self.synth_cat, tract, patch,
+                                         self.bands, self.butler,
+                                         rerun=self.data_dir,
                                          coadd_label=self.coadd_label,
-                                         band_detect=self.band_detect, 
-                                         use_andy_mask=self.use_andy_mask, 
+                                         band_detect=self.band_detect,
+                                         use_andy_mask=self.use_andy_mask,
                                          synth_model=self.synth_model)
         else:
             self.exp = HugsExposure(tract, patch, self.bands, self.butler,
-                                    band_detect=self.band_detect, 
-                                    rerun=self.data_dir, 
-                                    coadd_label=self.coadd_label, 
+                                    band_detect=self.band_detect,
+                                    rerun=self.data_dir,
+                                    coadd_label=self.coadd_label,
                                     use_andy_mask=self.use_andy_mask)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
-            utils.remove_mask_planes(mask, ['CR', 
+            utils.remove_mask_planes(mask, ['CR',
                                             'CROSSTALK',
-                                            'DETECTED_NEGATIVE', 
-                                            'NOT_DEBLENDED', 
-                                            #'SUSPECT', 
-                                            'UNMASKEDNAN', 
-                                            'INEXACT_PSF', 
-                                            'REJECTED', 
-                                            'CLIPPED']) 
+                                            'DETECTED_NEGATIVE',
+                                            'NOT_DEBLENDED',
+                                            # 'SUSPECT',
+                                            'UNMASKEDNAN',
+                                            'INEXACT_PSF',
+                                            'REJECTED',
+                                            'CLIPPED'])
 
         try:
             self.psf_sigma = utils.get_psf_sigma(self.exp[self.band_detect])
@@ -231,23 +234,24 @@ class PipeConfig(object):
 
         # setup thresh low/high/det: n_sig_grow --> rgrow
         ngrow = self.thresh_low.pop('n_sig_grow')
-        self.thresh_low['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+        self.thresh_low['rgrow'] = int(ngrow * self.psf_sigma + 0.5)
 
         ngrow = self.thresh_high.pop('n_sig_grow')
-        self.thresh_high['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+        self.thresh_high['rgrow'] = int(ngrow * self.psf_sigma + 0.5)
 
-        # convert clean min_pix to psf units 
+        # convert clean min_pix to psf units
         if 'psf sigma' in str(self.clean['min_pix_low_thresh']):
             nsig = int(self.clean['min_pix_low_thresh'].split()[0])
-            self.clean['min_pix_low_thresh'] = np.pi*(nsig*self.psf_sigma)**2
+            self.clean['min_pix_low_thresh'] = np.pi * \
+                (nsig * self.psf_sigma)**2
 
         # clean n_sig_grow --> rgrow
         ngrow = self.clean.pop('n_sig_grow')
         if ngrow is None:
             self.clean['rgrow'] = None
         else:
-            self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
-            self.logger.info('growing clean footprints with rgrow = {:.1f}'.\
+            self.clean['rgrow'] = int(ngrow * self.psf_sigma + 0.5)
+            self.logger.info('growing clean footprints with rgrow = {:.1f}'.
                              format(self.clean['rgrow']))
 
         # sextractor parameter file

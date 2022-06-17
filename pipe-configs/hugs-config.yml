@@ -3,7 +3,7 @@
 ####################################################
 
 data_dir: '/tigress/HSC/DR/s18a_wide' 
-hugs_io: '/scratch/gpfs/jgreco/hugs-io'
+hugs_io: '/scratch/gpfs/jiaxuanl/Data/HSC/hugs-io'
  
 min_good_data_frac: 0.5
 
@@ -35,7 +35,8 @@ clean:
     max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 10.0
-        
+    min_pix_low_thresh: 3 psf sigma
+
 hsc_small_sources_r_max: 2.0
 
 sep_steps:
@@ -61,7 +62,8 @@ sextractor:
         PIXEL_SCALE: 0.168
         DETECT_THRESH: 0.6
         THRESH_TYPE: RELATIVE
-        FILTER_NAME: '/home/jgreco/projects/hugs/hugs/sextractor/config/gauss_6.0_31x31.conv'
+        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
+        FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_6.0_31x31.conv'
         BACK_SIZE: 256
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
@@ -69,7 +71,7 @@ sextractor:
         SEEING_FWHM: 0.7
         MEMORY_PIXSTACK: 900000
     delete_created_files: True
-    sex_io_dir: '/scratch/gpfs/jgreco/sextractor-io'
+    sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/HSC/sextractor-io'
     verify_max_sep: 15  # pixels
 
 ####################################################

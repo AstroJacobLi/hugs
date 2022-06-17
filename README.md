@@ -13,6 +13,7 @@ This repository contains a low-surface-brightness galaxy detection pipeline for 
 - [sqlalchemy](https://www.sqlalchemy.org) (for pipeline database)
 - [schwimmbad](http://github.com/adrn/schwimmbad) (for parallel processing)
 - [sfdmap](http://github.com/kbarbary/sfdmap) (for extinction corrections)
+- [lsstutils](https://github.com/johnnygreco/lsstutils)
 
 ## Using hugs
 
