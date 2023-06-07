@@ -131,6 +131,7 @@ def run(cfg, reset_mask_planes=False):
 
         mi_clean = exp_clean.getMaskedImage()
         mask_clean = mi_clean.getMask()
+        cfg.mi_clean = mi_clean
 
         ############################################################
         # use sep to find and mask point-like sources
