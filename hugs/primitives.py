@@ -78,7 +78,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def clean(exposure, fpset_low, name_high='THRESH_HIGH',
+def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='STAR_MASK',
           max_frac_high_thresh=0.15, rgrow=None, random_state=None,
           bright_object_mask=True, min_pix_low_thresh=0):
     """
@@ -131,6 +131,15 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH',
     fpset_replace.setFootprints(fp_list)
     if rgrow:
         fpset_replace = afwDet.FootprintSet(fpset_replace, rgrow, True)
+    
+    # replace stars with noise
+    if name_star_mask in mask.getMaskPlaneDict():
+        # add star mask to fpset_replace
+        star_mask_bitmask = mask.getPlaneBitMask("STAR_MASK")
+        threshold = afwDet.Threshold(star_mask_bitmask, afwDet.Threshold.BITMASK)
+        fpset_star = afwDet.FootprintSet(mask, threshold)
+        fpset_replace.merge(fpset_star)
+
     mask.addMaskPlane('CLEANED')
     fpset_replace.setMask(mask, 'CLEANED')
 
