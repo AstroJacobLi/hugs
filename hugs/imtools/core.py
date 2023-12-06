@@ -106,7 +106,8 @@ def smooth_gauss(masked_image, sigma=2.0, nsigma=7.0,
         if inplace:
             convolved_image = masked_image
         else:
-            convolved_image = masked_image.Factory(masked_image.getBBox())
+            # convolved_image = masked_image.Factory(masked_image.getBBox())
+            convolved_image = masked_image.clone()
         convolved_image.getImage().getArray()[:] = img_arr_smooth
     else:
         width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
