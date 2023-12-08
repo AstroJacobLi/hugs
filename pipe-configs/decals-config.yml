@@ -1,0 +1,90 @@
+####################################################
+# hugs-pipe params
+####################################################
+
+data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD' 
+hugs_io: '/scratch/gpfs/jiaxuanl/Data/SALAD/hugs-io'
+ 
+mean_seeing_sigma: 1.5 #1.5
+
+pixel_scale: 0.262
+
+zpt: 22.5
+
+min_good_data_frac: 0.5
+
+band_detect: 'g'
+
+band_mask: 'g'
+
+band_verify: 'g' # 'r'
+
+band_meas: 'g'  # 'gr' # band_detect always included
+
+thresh_type: SB  # SB or stddev
+
+thresh_low:
+    thresh: 24.5 # mag/arcsec^2 
+    npix: 20
+    n_sig_grow: 15
+    isogrow: False
+    thresh_type: stdev
+
+thresh_high:
+    thresh: 22.5 # mag/arcsec^2
+    npix: 10
+    n_sig_grow: 10
+    thresh_type: stdev
+
+clean:
+    max_frac_high_thresh: 0.15  # per footprint
+    name_high: 'THRESH_HIGH'
+    n_sig_grow: 10.0
+    min_pix_low_thresh: 3 psf sigma
+
+hsc_small_sources_r_max: 2.0
+
+sep_steps:
+    extract_pixstack: 600000
+    sep_point_sources:
+        min_radius: 2.0 # arcsec
+        mask_grow: 3
+        do_measure: True
+        sep_extract_kws:
+            thresh: 1.5
+            minarea: 10
+            deblend_cont: 0.001
+            filter_num_fwhm: 1.0
+        sep_back_kws:
+            bw: 64
+            bh: 64
+            fw: 3
+            fh: 3
+            fthresh: 0.0
+
+sextractor:
+    config: 
+        PIXEL_SCALE: 0.262
+        DETECT_THRESH: 3
+        THRESH_TYPE: RELATIVE
+        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/default.conv'
+        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
+        FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_6.0_31x31.conv'
+        BACK_SIZE: 256
+        VERBOSE_TYPE: 'QUIET'
+        DETECT_MINAREA: 100
+        MAG_ZEROPOINT: 22.5
+        SEEING_FWHM: 0.7
+        DEBLEND_NTHRESH: 32
+        DEBLEND_MINCONT: 0.01
+        MEMORY_PIXSTACK: 900000
+        # BACKPHOTO_TYPE: "LOCAL"
+    delete_created_files: False
+    sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io'
+    verify_max_sep: 15  # pixels
+
+####################################################
+# Synths
+####################################################
+
+inject_synths: False

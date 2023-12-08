@@ -350,6 +350,32 @@ def make_noise_image(masked_image, random_state=None):
     noise_array = back_rms*rng.randn(dims[1], dims[0])
     return noise_array
 
+def make_noise_image_jl(masked_image, back_size=128, back_filtersize=5, random_state=None):
+    """
+    Generate Gaussian noise image according to the background and rms level of the input iamge.
+    
+    Parameters
+    ----------
+    masked_image : lsst.afw.image.MaskedImageF
+        Masked image for calculating noise image shape and the scale of the 
+        noise fluctuations.
+    back_size : int, optional
+        Size of the background mesh.
+    back_filtersize : int, optional
+        Size of the background mesh filter.
+    random_state : 
+        Input for check_random_state above.
+
+    Returns 
+    -------
+    noise_array : ndarray
+        The noise image. 
+    """
+    rng = check_random_state(random_state)
+    bkg, rms = sky_bkg_rms(masked_image.getImage().getArray(), 
+                           back_size=back_size, 
+                           back_filtersize=back_filtersize)
+    return rng.normal(bkg, rms)
 
 def solid_angle(ra_lim, dec_lim):
     """
@@ -502,3 +528,52 @@ def euclidean_dist_to_angular_dist(d, r=1):
     """
     theta = 2*np.arcsin(d/r/2.)*180./np.pi
     return theta
+
+## JL
+def sky_bkg_rms(image, back_size=128, back_filtersize=5):
+    """
+    Return the RMS of the sky background in the current image.
+
+    Parameters
+    ----------
+    image: numpy.ndarray
+        Image.
+    back_size: int, optional
+        Size of the background mesh.
+    back_filtersize: int, optional
+        Size of the background mesh filter.
+    """
+    import sep
+    try:
+        bkg = sep.Background(image, bw=back_size, bh=back_size,
+                             fw=back_filtersize, fh=back_filtersize)
+    except:
+        bkg = sep.Background(image.byteswap().newbyteorder(), 
+                             bw=back_size, bh=back_size,
+                             fw=back_filtersize, fh=back_filtersize)
+    return bkg.back(), bkg.rms()
+
+
+def calc_psf_sigma(psf):
+    """
+    Calculate the sigma of the PSF of the image in this exposure.
+    Sigma is FWHM / 2.354.
+    
+    Parameters
+    ----------
+    psf : numpy.ndarray
+        PSF image.
+    
+    Returns
+    -------
+    sig : float
+        Sigma of the PSF.
+    """
+    from scipy.interpolate import UnivariateSpline
+    psf = psf[np.shape(psf)[0] // 2, :]
+    px = np.arange(len(psf))
+    spline = UnivariateSpline(px, psf - np.max(psf)/2, s=0) # solve for the half-max
+    r1 = spline.roots()
+    fwhm = abs(r1[0] - r1[1])
+    sig = fwhm / 2.354
+    return sig

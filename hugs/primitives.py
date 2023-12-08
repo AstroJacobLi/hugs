@@ -113,6 +113,7 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='STAR_MAS
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     noise_array = utils.make_noise_image(mi, random_state)
+    # noise_array = utils.make_noise_image_jl(mi)
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
@@ -189,7 +190,7 @@ def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None,
     return exp_clean
 
 
-def remove_small_sources_thresholding(exposure, min_radius_arcsec,
+def remove_small_sources_thresholding(exposure, min_radius_arcsec, pixel_scale,
                                       random_state=None):
 
     mi = exposure.getMaskedImage()
@@ -198,7 +199,7 @@ def remove_small_sources_thresholding(exposure, min_radius_arcsec,
 
     threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
     fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)
-    area_min = np.pi * (min_radius_arcsec / utils.pixscale)**2
+    area_min = np.pi * (min_radius_arcsec / pixel_scale)**2
 
     fp_list = []
     for fp in fp_det.getFootprints():
@@ -251,7 +252,8 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     # write exposure for sextractor input and run
     #########################################################
 
-    detect_band = exp.getFilter().getName().lower()
+    # detect_band = exp.getFilter().getName().lower()
+    detect_band = exp.getFilter().bandLabel.lower()
     # some bands have numbers --> get the relevant letter
     detect_band = [b for b in detect_band if b in 'gri'][0]
     exp_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, detect_band))
@@ -260,11 +262,11 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     if original_fn is None:
         exp.writeFits(exp_fn)
     else:
-        header = fits.getheader(original_fn, ext=1)
+        header = fits.getheader(original_fn, ext=0)
         fits.writeto(exp_fn, exp.getImage().getArray(), header, overwrite=True)
 
     if dual_exp is not None:
-        meas_band = dual_exp.getFilter().getName().lower()
+        meas_band = dual_exp.getFilter().bandLabel.lower()
         meas_band = [b for b in meas_band if b in 'gri'][0]
         dual_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, meas_band))
 
@@ -274,7 +276,7 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         else:
             fn = original_fn.replace('HSC-' + detect_band.upper(),
                                      'HSC-' + meas_band.upper())
-            header = fits.getheader(fn, ext=1)
+            header = fits.getheader(fn, ext=0)
             fits.writeto(dual_fn, dual_exp.getImage().getArray(), header,
                          overwrite=True)
 

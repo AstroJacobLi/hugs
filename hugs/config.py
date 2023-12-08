@@ -7,7 +7,7 @@ import yaml
 import numpy as np
 import time
 from . import utils
-from .exposure import HugsExposure, SynthHugsExposure
+from .exposure import HugsExposure, SynthHugsExposure, DecalsExposure
 from .synths.catalog import GlobalSynthCat, generate_patch_cat
 
 from .log import HugsLogger
@@ -37,7 +37,7 @@ class PipeConfig(object):
         Label for this pipeline run.
     """
 
-    def __init__(self, config_fn=None, tract=None, patch=None,
+    def __init__(self, config_fn=None, brick=None,
                  log_level='info', random_state=None, log_fn=None,
                  run_name='hugs', rerun_path=None):
 
@@ -46,7 +46,8 @@ class PipeConfig(object):
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f, Loader=yaml.FullLoader)
 
-        self.data_dir = rerun_path if rerun_path else params['data_dir']
+        self.data_dir = params['data_dir']
+        self.rerun_path = rerun_path
         self.hugs_io = params['hugs_io']
         self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
@@ -78,6 +79,9 @@ class PipeConfig(object):
         self.band_detect = params['band_detect']
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
+        self.mean_seeing_sigma = params['mean_seeing_sigma']
+        self.pixscale = params['pixel_scale']
+        self.zpt = params['zpt']
 
         self.hsc_small_sources_r_max = params.pop(
             'hsc_small_sources_r_max', None)
@@ -105,18 +109,16 @@ class PipeConfig(object):
             self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
 
         # set patch id if given
-        if tract is not None:
-            assert patch is not None
-            self.set_patch_id(tract, patch)
+        if brick is not None:
+            self.set_brick_id(brick)
         else:
-            self.tract = None
-            self.patch = None
+            self.brick = None
 
-    def setup_logger(self, tract, patch):
+    def setup_logger(self, brick):
         """
         Setup the python logger.
         """
-        name = 'hugs: {} | {}'.format(tract, patch)
+        name = 'hugs: {}'.format(brick)
         self.logger = logging.getLogger(name)
         self.logger._set_defaults(self.log_level.upper())
         self.logger.info('starting ' + name)
@@ -124,21 +126,6 @@ class PipeConfig(object):
         if self.log_fn is not None:
             fh = logging.FileHandler(self.log_fn)
             self.logger.addHandler(fh)
-
-    @property
-    def butler(self):
-        """
-        Let's only load the butler once.
-        """
-
-        if self._butler is None:
-            if '/Users/jgreco' in self.data_dir:
-                from .mybutler import PersonalButler
-                self._butler = PersonalButler(self.data_dir)
-            else:
-                import lsst.daf.persistence
-                self._butler = lsst.daf.persistence.Butler(self.data_dir)
-        return self._butler
 
     @property
     def timer(self):
@@ -165,21 +152,15 @@ class PipeConfig(object):
                                             'THRESH_HIGH',
                                             'THRESH_LOW'])
 
-    def set_patch_id(self, tract, patch):
+    def set_brick_id(self, brick):
         """
         Setup the tract/patch. This must be done before running the pipeline
 
         Parameters
         ----------
-        tract : int
-            HSC tract.
-        patch : str
-            HSC patch.
         """
-
-        self.tract = tract
-        self.patch = patch
-        self.setup_logger(tract, patch)
+        self.brick = brick
+        self.setup_logger(brick)
 
         # careful not to modify parameters
         self.thresh_low = self._thresh_low.copy()
@@ -207,11 +188,9 @@ class PipeConfig(object):
                                          use_andy_mask=self.use_andy_mask,
                                          synth_model=self.synth_model)
         else:
-            self.exp = HugsExposure(tract, patch, self.bands, self.butler,
-                                    band_detect=self.band_detect,
-                                    rerun=self.data_dir,
-                                    coadd_label=self.coadd_label,
-                                    use_andy_mask=self.use_andy_mask)
+            self.exp = DecalsExposure(brick, self.bands, 
+                                      data_dir=os.path.join(self.data_dir, self.rerun_path),
+                                      band_detect=self.band_detect)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:
@@ -255,6 +234,5 @@ class PipeConfig(object):
                              format(self.clean['rgrow']))
 
         # sextractor parameter file
-        fn = '{}-{}-{}-{}.params'.format(
-            tract, patch[0], patch[-1], self.run_name)
+        fn = '{}-{}.params'.format(brick, self.run_name)
         self.sex_config['PARAMETERS_NAME'] = os.path.join(self.sex_io_dir, fn)

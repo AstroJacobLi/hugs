@@ -10,6 +10,12 @@ from .synths import inject_synths
 from .utils import fetch_andy_mask
 from .log import logger
 
+import lsst.afw.image as afwImage
+import lsst.afw.detection as afwDet
+import lsst.afw.math as afwMath
+import lsst.afw.display as afwDisplay
+import lsst.geom as geom
+
 class HugsExposure(object):
     """
     Class to fetch and contain multi-band HSC exposures and some metadata
@@ -150,3 +156,93 @@ class SynthHugsExposure(HugsExposure):
             for b in bands:
                 inject_synths(self.synths, exp=self[b], band=b, 
                               synth_model=synth_model)
+
+
+class DecalsExposure(object):
+    """
+    Class to fetch and contain multi-band DECaLS exposures and some metadata
+    associated with the hugs pipeline. 
+
+    Parameters
+    ----------
+    brick: str
+        DECaLS brick name
+    bands : str, optional
+        Photometric bands 
+    """
+
+    def __init__(self, brick, bands='gr', 
+                 data_dir='/scratch/gpfs/jiaxuanl/Data/SALAD/decals/ngc5055/tracts/',
+                 band_detect='g'):
+        self.brick = brick
+        self.bands = bands
+        self.synths = None
+        self.fn = {}
+        self.stat = {}
+
+        for band in bands:
+            fn = os.path.join(data_dir, f'legacysurvey-{self.brick}-image-{band}.fits') # filename
+            exp = afwImage.ExposureF(fn)
+            exp.setFilterLabel(afwImage.FilterLabel(band))
+            exp.getMask().addMaskPlane('BRIGHT_OBJECT')
+            self.fn[band] = fn
+            stat_task = get_clipped_sig_task()
+            self.stat[band] = stat_task.run(exp.getMaskedImage())
+            setattr(self, band.lower(), exp)
+
+        self.x0, self.y0 = self.g.getXY0()
+        self.patch_meta = Struct(
+            x0 = float(self.x0),
+            y0 = float(self.y0),
+            good_data_frac = self.good_data_fraction(band_detect),
+            small_frac = None,
+            cleaned_frac = None,
+            bright_obj_frac = None
+        )
+
+    def __getitem__(self, attr):
+        return self.__getattribute__(attr)
+
+    def get_mask_array(self, band='g', planes=['CLEANED', 'BRIGHT_OBJECT']):
+        """
+        Get mask from given planes.
+
+        Parameters
+        ----------
+        band : str
+            Photometric band
+        planes : list
+            The mask planes to include
+
+        Returns
+        -------
+        mask : ndarray
+           Mask with masked pixels = 1 and non-masked pixels = 0 
+        """
+        mask = self[band].getMaskedImage().getMask()
+        arr = np.zeros(mask.getArray().shape, dtype=bool)
+        for p in planes: 
+            if p in mask.getMaskPlaneDict().keys():
+                arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
+        return arr
+
+    def good_data_fraction(self, band='g', 
+            bad_masks=['NO_DATA', 'SUSPECT', 'SAT', 'BRIGHT_OBJECT']):
+        """
+        Find the fraction of pixels that contain data.
+        """
+        mask = self[band].getMask()
+        nodata = np.zeros_like(mask.getArray(), dtype=bool)
+        for m in bad_masks:
+            nodata |= mask.getArray() & mask.getPlaneBitMask(m) != 0
+        nodata = nodata.astype(float)
+        no_data_frac = nodata.sum()/nodata.size
+        return 1.0 - no_data_frac
+
+    def make_rgb(self, rgb_bands='irg', stretch=0.4, Q=8):
+        from astropy.visualization import make_lupton_rgb
+        rgb = make_lupton_rgb(self[rgb_bands[0]].getImage().getArray(), 
+                              self[rgb_bands[1]].getImage().getArray(), 
+                              self[rgb_bands[2]].getImage().getArray(), 
+                              stretch=stretch, Q=Q)
+        return rgb
