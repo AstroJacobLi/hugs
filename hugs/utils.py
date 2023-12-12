@@ -16,8 +16,8 @@ default_config_fn = os.path.join(
     project_dir, 'pipe-configs/default_config.yml')
 andy_mask_path = '/tigress/HSC/HSC/rerun/goulding/S18A_STARMASK/IMAGE_MASKS'
 
-pixscale = 0.168
-zpt = 27.0
+pixscale = 0.262
+zpt = 22.5
 
 #Extinction correction factor for HSC
 #A_lambda = Coeff * E(B-V)
@@ -577,3 +577,27 @@ def calc_psf_sigma(psf):
     fwhm = abs(r1[0] - r1[1])
     sig = fwhm / 2.354
     return sig
+
+
+def get_mask_array(mi, planes=['CLEANED', 'BRIGHT_OBJECT']):
+    """
+    Get mask from given planes.
+
+    Parameters
+    ----------
+    band : str
+        Photometric band
+    planes : list
+        The mask planes to include
+
+    Returns
+    -------
+    mask : ndarray
+        Mask with masked pixels = 1 and non-masked pixels = 0 
+    """
+    mask = mi.getMask()
+    arr = np.zeros(mask.getArray().shape, dtype=bool)
+    for p in planes: 
+        if p in mask.getMaskPlaneDict().keys():
+            arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
+    return arr

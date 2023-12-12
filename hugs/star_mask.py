@@ -6,6 +6,7 @@ from shapely.geometry import Polygon
 from shapely import affinity
 import rasterio.features
 import sep
+import traceback
 
 import lsst.geom as geom
 from astropy.coordinates import SkyCoord, match_coordinates_sky
@@ -144,86 +145,97 @@ def scott_star_mask(exposure, p1, p2, bright_thresh):
     mask : ndarray
         Star mask.
     """
-    bbox = exposure.getBBox()
-    
-    # Get gaia star catalog
-    gaia = get_gaia_stars(exposure)
-    
-    # Do a detection for bright objects, and match with Gaia catalog
-    w = exposure.getWcs()
-    img = exposure.getImage().getArray()
-    back = sep.Background(img, bw=256, bh=256)
-    img -= back.back()
-    cat, _ = sep.extract(img, 50, err=back.rms(), minarea=10, 
-                         deblend_nthresh=32, deblend_cont=0.01, 
-                         segmentation_map=True)
-    world = np.rad2deg(np.array(w.pixelToSkyArray(cat['x'], cat['y'])).T)
-
-    cat_coord = SkyCoord(world, unit='deg')
-    gaia_coord = SkyCoord(gaia['ra'], gaia['dec'])
-    
-    # Fit a relation between the segmap size and g-band magnitude
-    # this relation is used to determine the size of the mask for faint stars
-    inds, dist, _ = match_coordinates_sky(cat_coord, gaia_coord)
-    matched = (dist < 0.5 * u.arcmin)
-    logarea = np.log10(cat['npix'])[matched]
-    gmag = gaia['phot_g_mean_mag'][inds[matched]]
-
-    logarea = logarea[gmag < 19]
-    gmag = gmag[gmag < 19]
-
-    if len(gmag) > 0:
-        poly = np.polyfit(gmag, logarea, 1)
-        good_flag = abs(logarea - np.poly1d(poly)(gmag)) < 0.5 # remove outliers that are >0.5 far away
-        poly = np.polyfit(gmag[good_flag], logarea[good_flag], 1)
-    else:
-        poly = [-0.18, 5.4]
-    poly[0] *= p1
-    poly[1] += p2
-    
-    # Mask bright stars
-    bright_buffer = 400
-    x, y = w.skyToPixelArray(np.deg2rad(gaia['ra'].data), 
-                             np.deg2rad(gaia['dec'].data))
-    flag = (x > bbox.getBeginX() - bright_buffer) & (
-        x < bbox.getEndX() + bright_buffer) & (
-        y > bbox.getBeginY() - bright_buffer) & (
-        y < bbox.getEndY() + bright_buffer) # only mask stars within the bbox + buffer
-    bright_gaia = gaia[flag & (gaia['phot_g_mean_mag'] < bright_thresh)]
-    
-    mask_bright = np.zeros_like(img).astype(bool)
-    for star in bright_gaia:
-        ra, dec = star['ra'], star['dec']
-        pix = w.skyToPixel(geom.SpherePoint(geom.Angle(ra, geom.degrees), geom.Angle(dec, geom.degrees)))
-        x, y = pix.x, pix.y
-        bokeh_size = 900 * np.exp(-star['phot_g_mean_mag'] / 7.5)
-        bokeh_size = np.min([bokeh_size, 1800]) # max size is 1800
-        sep.mask_ellipse(mask_bright, x, y, bokeh_size, bokeh_size, 0, r=1)
-        mask_cross(mask_bright, x, y, 4 * bokeh_size, 2 * bokeh_size//5)
+    try:
+        bbox = exposure.getBBox()
         
-    # Mask fainter stars
-    size_buffer = 0
-    x, y = w.skyToPixelArray(np.deg2rad(gaia['ra'].data), np.deg2rad(gaia['dec'].data))
-    flag = (x > bbox.getBeginX() - size_buffer) & (
-        x < bbox.getEndX() + size_buffer) & (
-        y > bbox.getBeginY() - size_buffer) & (
-        y < bbox.getEndY() + size_buffer) # only mask stars within the bbox + buffer
-    faint_gaia = gaia[flag]
-    faint_gaia = faint_gaia[faint_gaia['phot_g_mean_mag'] < 20]
-    
-    mask_faint = np.zeros_like(img).astype(bool)
-    for star in faint_gaia:
-        ra, dec = star['ra'], star['dec']
-        pix = w.skyToPixel(geom.SpherePoint(geom.Angle(ra, geom.degrees), geom.Angle(dec, geom.degrees)))
-        x, y = pix.x, pix.y
+        # Get gaia star catalog
+        gaia = get_gaia_stars(exposure)
         
-        size = np.poly1d(poly)(star['phot_g_mean_mag'])
-        size = int((10**(size)/np.pi)**0.5)
-    #     size *= 2
-        if size > 1800:
-            size = 1800
-        sep.mask_ellipse(mask_faint, x, y, size, size, 0, r=1)
-        mask_cross(mask_faint, x, y, 3 * size, 2 * size//5)
+        # Do a detection for bright objects, and match with Gaia catalog
+        w = exposure.getWcs()
+        img = exposure.getImage().getArray()
+        back = sep.Background(img, bw=256, bh=256)
+        img -= back.back()
+        cat, _ = sep.extract(img, 50, err=back.rms(), minarea=10, 
+                            deblend_nthresh=32, deblend_cont=0.01, 
+                            segmentation_map=True)
+        world = np.rad2deg(np.array(w.pixelToSkyArray(cat['x'], cat['y'])).T)
+
+        cat_coord = SkyCoord(world, unit='deg')
+        gaia_coord = SkyCoord(gaia['ra'], gaia['dec'])
         
-    mask = mask_bright | mask_faint
-    return mask
+        # Fit a relation between the segmap size and g-band magnitude
+        # this relation is used to determine the size of the mask for faint stars
+        inds, dist, _ = match_coordinates_sky(cat_coord, gaia_coord)
+        matched = (dist < 0.5 * u.arcmin)
+        logarea = np.log10(cat['npix'])[matched]
+        gmag = gaia['phot_g_mean_mag'][inds[matched]]
+
+        logarea = logarea[gmag < 19]
+        gmag = gmag[gmag < 19]
+
+        if len(gmag) > 0:
+            poly = np.polyfit(gmag, logarea, 1)
+            good_flag = abs(logarea - np.poly1d(poly)(gmag)) < 0.5 # remove outliers that are >0.5 far away
+            poly = np.polyfit(gmag[good_flag], logarea[good_flag], 1)
+        else:
+            poly = [-0.18, 5.4]
+        poly[0] *= p1
+        poly[1] += p2
+        
+        # Mask bright stars
+        bright_buffer = 400
+        x, y = w.skyToPixelArray(np.deg2rad(gaia['ra'].data), 
+                                np.deg2rad(gaia['dec'].data))
+        flag = (x > bbox.getBeginX() - bright_buffer) & (
+            x < bbox.getEndX() + bright_buffer) & (
+            y > bbox.getBeginY() - bright_buffer) & (
+            y < bbox.getEndY() + bright_buffer) # only mask stars within the bbox + buffer
+        bright_gaia = gaia[flag & (gaia['phot_g_mean_mag'] < bright_thresh)]
+        
+        mask_bright = np.zeros_like(img).astype(bool)
+        for star in bright_gaia:
+            ra, dec = star['ra'], star['dec']
+            pix = w.skyToPixel(geom.SpherePoint(geom.Angle(ra, geom.degrees), geom.Angle(dec, geom.degrees)))
+            x, y = pix.x, pix.y
+            bokeh_size = 900 * np.exp(-star['phot_g_mean_mag'] / 7.5)
+            if not np.isfinite(bokeh_size):
+                bokeh_size = 200
+            bokeh_size = np.min([bokeh_size, 1800]) # max size is 1800
+            sep.mask_ellipse(mask_bright, x, y, bokeh_size, bokeh_size, 0, r=1)
+            mask_cross(mask_bright, x, y, 4 * bokeh_size, 2 * bokeh_size//5)
+            
+        # Mask fainter stars
+        size_buffer = 0
+        x, y = w.skyToPixelArray(np.deg2rad(gaia['ra'].data), np.deg2rad(gaia['dec'].data))
+        flag = (x > bbox.getBeginX() - size_buffer) & (
+            x < bbox.getEndX() + size_buffer) & (
+            y > bbox.getBeginY() - size_buffer) & (
+            y < bbox.getEndY() + size_buffer) # only mask stars within the bbox + buffer
+        faint_gaia = gaia[flag]
+        faint_gaia = faint_gaia[faint_gaia['phot_g_mean_mag'] < 20]
+        
+        mask_faint = np.zeros_like(img).astype(bool)
+        for star in faint_gaia:
+            ra, dec = star['ra'], star['dec']
+            pix = w.skyToPixel(geom.SpherePoint(geom.Angle(ra, geom.degrees), geom.Angle(dec, geom.degrees)))
+            x, y = pix.x, pix.y
+            if np.isnan(x) or np.isnan(y):
+                continue
+            size = np.poly1d(poly)(star['phot_g_mean_mag'])
+            if not np.isfinite(size):
+                size = 3.5
+            size = int((10**(size)/np.pi)**0.5)
+        #     size *= 2
+            if size > 1800:
+                size = 1800
+            sep.mask_ellipse(mask_faint, x, y, size, size, 0, r=1)
+            mask_cross(mask_faint, x, y, 3 * size, 2 * size//5)
+            
+        mask = mask_bright | mask_faint
+        return mask
+    except Exception as e:
+        print(traceback.format_exc())
+        print(e)
+        print('Scott star mask failed. Return empty mask.')
+        # return np.zeros_like(exposure.getImage().getArray()).astype(bool)

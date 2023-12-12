@@ -2,9 +2,9 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/' 
+data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD' 
 hugs_io: '/scratch/gpfs/jiaxuanl/Data/SALAD/hugs-io'
-
+ 
 mean_seeing_sigma: 1.5 # #1.5
 
 pixel_scale: 0.262
@@ -24,25 +24,25 @@ band_meas: 'gr'  # 'gr' # band_detect always included
 thresh_type: SB  # SB or stddev
 
 thresh_low:
-    thresh: 24. #24.5 # mag/arcsec^2 
+    thresh: 25.5 #24.5 # mag/arcsec^2 
     npix: 20
-    n_sig_grow: 15
+    n_sig_grow: 25
     isogrow: False
     thresh_type: stdev
 
 thresh_high:
-    thresh: 22 #22.5 # mag/arcsec^2
+    thresh: 22.5 #22.5 # mag/arcsec^2
     npix: 10
-    n_sig_grow: 10
+    n_sig_grow: 20
     thresh_type: stdev
 
 clean:
     max_frac_high_thresh: 0.10  # per footprint
     name_high: 'THRESH_HIGH'
-    n_sig_grow: 10.0
+    n_sig_grow: 20.0
     min_pix_low_thresh: 3 psf sigma
 
-hsc_small_sources_r_max: 4 #2.0
+hsc_small_sources_r_max: 3 #2.0
 
 sep_steps:
     extract_pixstack: 600000
@@ -64,27 +64,24 @@ sep_steps:
 
 sextractor:
     config: 
-        BACK_SIZE: 250
         PIXEL_SCALE: 0.262
-        DETECT_THRESH: 2.5
+        DETECT_THRESH: 0.7
         THRESH_TYPE: RELATIVE
         # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/default.conv'
-        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
+        FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
         # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_6.0_31x31.conv'
-        # FILTER_NAME: "/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io/gauss_5.0_15x15.conv"
-        FILTER: 'N'
-        BACK_SIZE: 256
+        BACK_SIZE: 512
         VERBOSE_TYPE: 'QUIET'
-        DETECT_MINAREA: 600
+        DETECT_MINAREA: 150
         MAG_ZEROPOINT: 22.5
         SEEING_FWHM: 0.7 # this is used for star/gal separation
         DEBLEND_NTHRESH: 32
         DEBLEND_MINCONT: 0.1
         MEMORY_PIXSTACK: 900000
-        # BACKPHOTO_TYPE: "LOCAL"
+        BACKPHOTO_TYPE: "LOCAL"
     delete_created_files: False
     sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io'
-    verify_max_sep: 25  # pixels
+    verify_max_sep: 15  # pixels
 
 ####################################################
 # Synths

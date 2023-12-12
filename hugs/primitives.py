@@ -78,7 +78,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='STAR_MASK',
+def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='BRIGHT_OBJECT',
           max_frac_high_thresh=0.15, rgrow=None, random_state=None,
           bright_object_mask=True, min_pix_low_thresh=0):
     """
@@ -113,7 +113,7 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='STAR_MAS
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     noise_array = utils.make_noise_image(mi, random_state)
-    # noise_array = utils.make_noise_image_jl(mi)
+    # noise_array = utils.make_noise_image_jl(mi, back_size=32)
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
@@ -136,7 +136,7 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='STAR_MAS
     # replace stars with noise
     if name_star_mask in mask.getMaskPlaneDict():
         # add star mask to fpset_replace
-        star_mask_bitmask = mask.getPlaneBitMask("STAR_MASK")
+        star_mask_bitmask = mask.getPlaneBitMask(name_star_mask)
         threshold = afwDet.Threshold(star_mask_bitmask, afwDet.Threshold.BITMASK)
         fpset_star = afwDet.FootprintSet(mask, threshold)
         fpset_replace.merge(fpset_star)

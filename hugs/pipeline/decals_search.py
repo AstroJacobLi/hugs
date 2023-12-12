@@ -17,7 +17,7 @@ from .. import primitives as prim
 from ..cattools import xmatch
 from ..star_mask import scott_star_mask
 
-
+import copy
 import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
 import lsst.afw.math as afwMath
@@ -57,8 +57,9 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         # Generate star mask
         ############################################################
+        cfg.logger.info('generating star mask')
         star_mask = scott_star_mask(exposure=cfg.exp[cfg.band_detect], 
-                                    p1=0.8, p2=0.8, bright_thresh=12)
+                                    p1=0.8, p2=0.8, bright_thresh=13)
         mi = cfg.exp[cfg.band_detect].getMaskedImage()
         mask = mi.getMask()
         # Set star mask to the MASK
@@ -104,8 +105,8 @@ def run(cfg, reset_mask_planes=False):
         # Image thesholding at low and high thresholds. In both
         # cases, the image is smoothed at the psf scale.
         ############################################################
-
-        mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
+        # mi_smooth = imtools.smooth_gauss(mi_band_mask, cfg.psf_sigma)
+        mi_smooth = mi_band_mask # we don't smooth here
         stats = stat_task.run(mi_smooth)
 
         if stats.stdev <= 0.0 or np.isnan(stats.stdev):
@@ -152,7 +153,7 @@ def run(cfg, reset_mask_planes=False):
         w = exp_clean.getWcs()
         img = exp_clean.getImage().getArray()
         back = sep.Background(img, bw=32, bh=32)
-        cat, segmap = sep.extract(img - back.back(), 5, err=back.rms(), minarea=10, 
+        cat, segmap = sep.extract(img - back.back(), 4, err=back.rms(), minarea=10, 
                                   deblend_nthresh=32, deblend_cont=0.001, 
                                   segmentation_map=True)
         mask = exp_clean.getMask()
@@ -176,7 +177,7 @@ def run(cfg, reset_mask_planes=False):
 
         if cfg.sep_steps is not None:
             sep_stepper = SepLsstStepper(config=cfg.sep_steps)
-            sep_stepper.setup_image(exp_clean, cfg.psf_sigma * 2.254, cfg.rng) # TODO: check this
+            sep_stepper.setup_image(exp_clean, cfg.psf_sigma * 2.354, cfg.rng) # TODO: check this
 
             step_mask = cfg.exp.get_mask_array(band=cfg.band_detect,
                 planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
@@ -194,11 +195,15 @@ def run(cfg, reset_mask_planes=False):
             mask_clean.getArray()[
                 ell_msk] += mask_clean.getPlaneBitMask('SMALL')
 
-        mi = exp_clean.getMaskedImage()
-        mi = imtools.smooth_gauss(mi, 4) # cfg.psf_sigma
-        # cfg.exp_clean = exp_clean
-        # return None
-        exp_clean.setMaskedImage(mi)
+        # cfg.exp[cfg.band_detect].setMaskedImage(imtools.smooth_gauss(cfg.exp[cfg.band_detect].getMaskedImage(), cfg.psf_sigma))
+        # cfg.exp[cfg.band_verify].setMaskedImage(imtools.smooth_gauss(cfg.exp[cfg.band_verify].getMaskedImage(), cfg.psf_sigma))
+        # mi = exp_clean.getMaskedImage()
+        # mi = imtools.smooth_gauss(mi, cfg.psf_sigma * 1.5)
+        # # return None
+        # exp_clean.setMaskedImage(mi)
+        cfg.exp_clean = exp_clean
+        
+        cfg.exp_ori = copy.deepcopy(cfg.exp)
         
         ############################################################
         # Detect sources and measure props with SExtractor
@@ -208,25 +213,48 @@ def run(cfg, reset_mask_planes=False):
         label = '{}'.format(cfg.brick)
 
         cfg.logger.info('cleaning non-detection bands')
-        replace = cfg.exp.get_mask_array(cfg.band_detect)
+        # replace = cfg.exp.get_mask_array(cfg.band_detect, planes=['CLEANED', "SMALL", 'BRIGHT_OBJECT'])
+        replace = utils.get_mask_array(exp_clean.getMaskedImage(), planes=['CLEANED', "SMALL", 'BRIGHT_OBJECT'])
         for band in cfg.bands:
-            if band != cfg.band_detect:
-                mi_band = cfg.exp[band].getMaskedImage()
-                noise_array = utils.make_noise_image(mi_band, cfg.rng)
-                mi_band.getImage().getArray()[replace] = noise_array[replace]
+            # if band != cfg.band_detect: # also clean the detection band
+            mi_band = cfg.exp[band].getMaskedImage()
+            noise_array = utils.make_noise_image(mi_band, cfg.rng)
+            mi_band.getImage().getArray()[replace] = noise_array[replace]
 
+        
+        ############################################################
+        # Smooth the original images for detection
+        ############################################################
+        cfg.logger.info('smoothing images for detection')
+        exp_det = {}
+        for band in cfg.bands:
+            exp_det[band] = cfg.exp[band].clone()
+            mi = exp_det[band].getMaskedImage()
+            mi = imtools.smooth_gauss(mi, 
+                                      sigma=1.75 * cfg.psf_sigma,
+                                    #   sigma=1.0, 
+                                      use_scipy=True, inplace=False)
+            exp_det[band].setMaskedImage(mi)
+            # exp_det[band].setImage(afwImage.ImageF( f'/scratch/gpfs/jiaxuanl/Data/scott/decals/ngc5055/tracts_sims/det_tmp/1979p420-{band}_lsb.fits')) # image with star mask
+        cfg.exp_det = exp_det
+        
+        ############################################################
+        # Run SExtractor on the cleaned image also do forced photometry
+        ############################################################
         sources = Table()
 
         for band in cfg.bands:
             cfg.logger.info('measuring in {}-band'.format(band))
             dual_exp = None if band == cfg.band_detect else cfg.exp[band]
             sources_band = prim.detect_sources(
-                exp_clean, cfg.sex_config, cfg.sex_io_dir, label=label,
+                cfg.exp_det[cfg.band_detect], 
+                cfg.sex_config, cfg.sex_io_dir, label=label,
                 dual_exp=dual_exp,
                 delete_created_files=cfg.delete_created_files,
                 original_fn=cfg.exp.fn[cfg.band_detect])
             if len(sources_band) > 0:
                 sources = hstack([sources, sources_band])
+                cfg.logger.info(f'total sources in {band}-band = {len(sources)}')
             else:
                 cfg.logger.warn('**** no sources found by sextractor ****')
                 results = _null_return(cfg, exp_clean)
@@ -241,10 +269,12 @@ def run(cfg, reset_mask_planes=False):
         for band in cfg.band_verify:
             cfg.logger.info('verifying dection in {}-band'.format(band))
             sources_verify = prim.detect_sources(
-                cfg.exp[band], cfg.sex_config, cfg.sex_io_dir,
+                cfg.exp_det[band], # cfg.exp[band], 
+                cfg.sex_config, cfg.sex_io_dir,
                 label=label, delete_created_files=cfg.delete_created_files,
                 original_fn=cfg.exp.fn[band])
             if len(sources_verify) > 0:
+                cfg.logger.info(f'total sources in {band}-band = {len(sources_verify)}')
                 match_masks, _ = xmatch(
                     sources, sources_verify, max_sep=cfg.verify_max_sep)
                 txt = 'cuts: {} out of {} objects detected in {}-band'.format(
@@ -277,6 +307,7 @@ def run(cfg, reset_mask_planes=False):
                          sources=sources,
                          hugs_exp=cfg.exp,
                          exp_clean=exp_clean,
+                         exp_det=exp_det,
                          success=True,
                          synths=cfg.exp.synths)
 

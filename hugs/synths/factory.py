@@ -7,8 +7,11 @@ from scipy.special import gammaincinv
 import lsst.afw.image
 import lsst.geom
 from .sersic import Sersic
-from ..utils import pixscale, zpt, check_random_state
+from ..utils import check_random_state
 from ..utils import embed_slices
+
+zpt = 22.5
+pixscale = 0.262
 
 try:
     import galsim

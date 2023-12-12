@@ -11,10 +11,6 @@ from .utils import fetch_andy_mask
 from .log import logger
 
 import lsst.afw.image as afwImage
-import lsst.afw.detection as afwDet
-import lsst.afw.math as afwMath
-import lsst.afw.display as afwDisplay
-import lsst.geom as geom
 
 class HugsExposure(object):
     """
@@ -112,7 +108,7 @@ class HugsExposure(object):
                 arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
         return arr
 
-    def good_data_fraction(self, band='i', 
+    def good_data_fraction(self, band='g', 
             bad_masks=['NO_DATA', 'SUSPECT', 'SAT']):
         """
         Find the fraction of pixels that contain data.
@@ -239,10 +235,10 @@ class DecalsExposure(object):
         no_data_frac = nodata.sum()/nodata.size
         return 1.0 - no_data_frac
 
-    def make_rgb(self, rgb_bands='irg', stretch=0.4, Q=8):
+    def make_rgb(self, stretch=0.03, Q=0.1, minimum=-0.005):
         from astropy.visualization import make_lupton_rgb
-        rgb = make_lupton_rgb(self[rgb_bands[0]].getImage().getArray(), 
-                              self[rgb_bands[1]].getImage().getArray(), 
-                              self[rgb_bands[2]].getImage().getArray(), 
-                              stretch=stretch, Q=Q)
+        g = self['g'].getImage().getArray()
+        r = self['r'].getImage().getArray()
+        rgb = make_lupton_rgb(0.4 * r, 0.2 * (g+r), 0.55 * g,
+                              stretch=stretch, Q=Q, minimum=minimum)
         return rgb

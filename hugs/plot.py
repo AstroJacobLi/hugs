@@ -50,3 +50,17 @@ def plot_sep_sources(image, catalog, ec='lime', scale_ell=6, subplots=None,
     return fig, ax
 
 
+from astropy.visualization import ZScaleInterval
+def show_step(img, ax, vmin, vmax, title, seg=None, alpha=0.6, cmap=plt.cm.gnuplot):
+    
+    ax.imshow(img, cmap='gray_r', vmin=vmin, vmax=vmax, origin='lower')
+    
+    if seg is not None:
+        if type(seg) is not list:
+            seg = [seg]
+        if type(alpha) is not list:    
+            alpha = [alpha]*len(seg)  
+        for s, a in zip(seg, alpha): 
+            ax.imshow(s, alpha=a, cmap=cmap, vmin=0, vmax=1, origin='lower')
+            
+    ax.set_title(title, fontsize=15)

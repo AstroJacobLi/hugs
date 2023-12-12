@@ -76,7 +76,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
 
 
 def smooth_gauss(masked_image, sigma=2.0, nsigma=7.0, 
-                 inplace=False, use_scipy=False, **kwargs):
+                 inplace=False, use_scipy=True, **kwargs):
     """
     Smooth image with a Gaussian kernel. 
 
@@ -145,11 +145,12 @@ def smooth_image(masked_image, kernel='exp', **kwargs):
     if kernel=='gauss':
         return smooth_gauss(masked_image, **kwargs)
     elif kernel=='exp':
-        from photutils.utils.convolution import filter_data
+        from astropy.convolution import convolve
+        # from photutils.utils.convolution import filter_data
         from .kernels import exp_kern
         img_arr = get_image_ndarray(masked_image)
         kern = exp_kern(alpha=kwargs['alpha'], size=kwargs['size'])
-        img_arr_smooth = filter_data(img_arr, kern, mode='reflect')
+        img_arr_smooth = convolve(img_arr, kern, boundary='wrap')
         convolved_image = masked_image.Factory(masked_image.getBBox())
         convolved_image.getImage().getArray()[:] = img_arr_smooth
         return convolved_image

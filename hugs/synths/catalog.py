@@ -67,7 +67,7 @@ def random_positions(image_shape=(501, 501), nsynths=10, edge_buffer=20,
 
 
 def random_colors(nsynths, sample_pad=15, random_state=None, 
-                  m=0.68, b=0.15, x_lim=[0, 1.31], y_lim=[-0.2, 1.1]):
+                  m=0.68, b=0.15, x_lim=[0, 1.31], y_lim=[0.3, 0.9]):
     rng = check_random_state(random_state)
     color_line_lo =  lambda _x: m*_x - b
     color_line_hi =  lambda _x: m*_x + b
@@ -150,6 +150,97 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
 
     if master_band == 'g':
         # write i band
+        cat['m_i'] = m_tot - g_i
+        cat['mu_0_i'] = mu_0 - g_i
+        cat['mu_e_ave_i'] = mu_e_ave - g_i
+        # write r band
+        cat['m_r'] = m_tot - g_r
+        cat['mu_0_r'] = mu_0 - g_r
+        cat['mu_e_ave_r'] = mu_e_ave - g_r
+    elif master_band == 'i':
+        # write g band
+        cat['m_g'] = m_tot + g_i
+        cat['mu_0_g'] = mu_0 + g_i
+        cat['mu_e_ave_g'] = mu_e_ave + g_i
+        # write r band
+        cat['m_r'] = m_tot + g_i - g_r
+        cat['mu_0_r'] = mu_0 + g_i - g_r
+        cat['mu_e_ave_r'] = mu_e_ave + g_i - g_r
+    else:
+        raise Exception('master_band must be g or i')
+
+    cat = Table(cat)
+   
+    cat['theta'] = theta
+    cat['PA'] = theta - 90
+    cat['r_e'] = r_eff
+    cat['ell'] = 1 - b_a 
+    cat['n'] = sersic_n
+    cat['g-i'] = g_i
+    cat['g-r'] = g_r
+
+    return cat
+
+
+def synthetic_sersics_scott(mu_range=[23, 28], mag_range=[17, 23], mu_nbins=10, mag_nbins=10,
+                      n_range=[0.3, 1.5], ell_range=[0., 0.65], 
+                      theta_range=[0, 180], nsynths=100, random_state=None,  
+                      master_band='g', mu_type="central", 
+                      g_i=0.6, g_r=0.4, **kwargs):
+    """
+    Generate catalog of Sersic galaxies.
+    Instead of r_eff, use mag_range.
+    mag is apparent magnitude in master band.
+    """
+
+    size = int(nsynths)
+
+    rng = check_random_state(random_state)   
+    sersic_n = rng.uniform(*n_range, size=size)    
+    ell = rng.uniform(*ell_range, size=size)    
+    theta = rng.uniform(*theta_range, size=size)    
+    
+    b_a = 1 - ell
+    b_n = gammaincinv(2.*sersic_n, 0.5)
+    f_n = gamma(2*sersic_n)*sersic_n*np.exp(b_n)/b_n**(2*sersic_n)
+
+    mu_bins = np.linspace(mu_range[0], mu_range[1], mu_nbins)
+    mu = rng.choice(mu_bins, size=size)
+
+    mag_bins = np.linspace(mag_range[0], mag_range[1], mag_nbins)
+    mags = rng.choice(mag_bins, size=size)
+    
+    if mu_type=='central':
+        mu_0 = mu
+        mu_e = mu_0 + 2.5*b_n/np.log(10)
+        mu_e_ave = mu_e - 2.5*np.log10(f_n)
+    elif mu_type=='average':
+        mu_e_ave = mu
+        mu_e = mu_e_ave + 2.5*np.log10(f_n)
+        mu_0 = mu_e - 2.5*b_n/np.log(10) 
+    else:
+        raise Exception(mu_type+' is not a valid mu type')
+    
+    r_circ = np.sqrt(10**((mu_e_ave - mags)/2.5)/2/np.pi)
+    r_eff = r_circ/np.sqrt(b_a)
+    
+    A_eff = np.pi*r_circ**2
+    m_tot = mu_e_ave - 2.5*np.log10(2*A_eff)  # is equivalent to m_tot = mags
+    
+
+    cat = {'m_' + master_band: m_tot, 
+            'mu_0_' + master_band: mu_0, 
+            'mu_e_ave_' + master_band: mu_e_ave}
+
+    if type(g_i) == str or type(g_r) == str:
+        if g_i == 'random' or g_r == 'random':
+            g_i, g_r = random_colors(nsynths, random_state=rng)
+        else:
+            raise Exception('invalid g_i or g_r option given')
+
+    if master_band == 'g':
+        # write i band
+        cat['mag_i'] = m_tot - g_i
         cat['m_i'] = m_tot - g_i
         cat['mu_0_i'] = mu_0 - g_i
         cat['mu_e_ave_i'] = mu_e_ave - g_i
@@ -423,6 +514,33 @@ def generate_patch_cat(nsynths, image_shape, edge_buffer, sersic_params={},
 
     sersic_params['nsynths'] = nsynths
     catalog = synthetic_sersics(**sersic_params)
+    catalog['x'] = x
+    catalog['y'] = y
+
+    return catalog
+
+
+def generate_patch_cat_scott(nsynths, image_shape, edge_buffer, sersic_params={}, 
+                       random_state=None, min_pixel_sep=150, wcs=None):
+    """
+    Scott assumed that mags and mu0 are on grids. Also ellipticity is zero, and 
+    sersic index n=1. 
+    
+    """
+
+    x, y = random_positions(image_shape, 1, edge_buffer, random_state)
+
+    cat_size = 1
+    while cat_size < nsynths:
+        _x, _y = random_positions(image_shape, 1, edge_buffer, random_state)
+        seps = np.sqrt((_x - x)**2 + (_y - y)**2)
+        if (seps < min_pixel_sep).sum() == 0:
+            x = np.concatenate([x, _x])
+            y = np.concatenate([y, _y])
+            cat_size += 1
+
+    sersic_params['nsynths'] = nsynths
+    catalog = synthetic_sersics_scott(**sersic_params)
     catalog['x'] = x
     catalog['y'] = y
 
