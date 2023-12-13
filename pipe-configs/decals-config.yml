@@ -37,7 +37,7 @@ thresh_high:
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.10  # per footprint
+    max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 10.0
     min_pix_low_thresh: 3 psf sigma
