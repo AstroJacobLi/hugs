@@ -31,7 +31,7 @@ thresh_low:
     thresh_type: stdev
 
 thresh_high:
-    thresh: 22 #22.5 # mag/arcsec^2
+    thresh: 21.5 #22.5 # mag/arcsec^2
     npix: 10
     n_sig_grow: 10
     thresh_type: stdev
@@ -43,6 +43,7 @@ clean:
     min_pix_low_thresh: 3 psf sigma
 
 hsc_small_sources_r_max: 4 #2.0
+lsb_smooth_factor: 1.75 #1.75 # lsb_smooth_factor * psf_sigma
 
 sep_steps:
     extract_pixstack: 600000

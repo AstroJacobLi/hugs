@@ -85,6 +85,7 @@ class PipeConfig(object):
 
         self.hsc_small_sources_r_max = params.pop(
             'hsc_small_sources_r_max', None)
+        self.lsb_smooth_factor = params.pop('lsb_smooth_factor', 1.75)
 
         # setup for sextractor
         sex_setup = params['sextractor']

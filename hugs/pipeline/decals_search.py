@@ -231,8 +231,7 @@ def run(cfg, reset_mask_planes=False):
             exp_det[band] = cfg.exp[band].clone()
             mi = exp_det[band].getMaskedImage()
             mi = imtools.smooth_gauss(mi, 
-                                      sigma=1.75 * cfg.psf_sigma,
-                                    #   sigma=1.0, 
+                                      sigma=cfg.lsb_smooth_factor * cfg.psf_sigma,
                                       use_scipy=True, inplace=False)
             exp_det[band].setMaskedImage(mi)
             # exp_det[band].setImage(afwImage.ImageF( f'/scratch/gpfs/jiaxuanl/Data/scott/decals/ngc5055/tracts_sims/det_tmp/1979p420-{band}_lsb.fits')) # image with star mask
