@@ -1,0 +1,7 @@
+{
+    "editor.defaultFormatter": "GitHub.copilot",
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8"
+    }
+}
