@@ -13,6 +13,13 @@ from .synths.catalog import GlobalSynthCat, generate_patch_cat
 from .log import HugsLogger
 logging.setLoggerClass(HugsLogger)
 
+def update_nested_dict(d, u):
+    for k, v in u.items():
+        if isinstance(v, dict):
+            d[k] = update_nested_dict(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 class PipeConfig(object):
     """
@@ -23,10 +30,8 @@ class PipeConfig(object):
     config_fn : string, optional
         The parameter file name (must be a yaml file).
         If None, will use default config.
-    tract : int, optional
-        HSC tract.
-    patch : str, optional
-        HSC patch
+    brick : string, optional
+        DECaLS brick name.
     log_level : string, optional
         Level of python logger.
     random_state : int, list of ints, RandomState instance, or None 
@@ -35,9 +40,15 @@ class PipeConfig(object):
         If None, the rng is the RandomState instance used by np.random.
     run_name : sting, optional
         Label for this pipeline run.
+    rerun_path : string, optional
+        Path to rerun directory, e.g., f'decals/ngc5055/tracts/'. 
+        If None, will use default path.
+    host_setting : dict, optional
+        Host-specific settings. If None, will use default settings in the 
+        config file.
     """
 
-    def __init__(self, config_fn=None, brick=None,
+    def __init__(self, config_fn=None, brick=None, host_setting=None,
                  log_level='info', random_state=None, log_fn=None,
                  run_name='hugs', rerun_path=None):
 
@@ -45,6 +56,11 @@ class PipeConfig(object):
         self.config_fn = config_fn if config_fn else utils.default_config_fn
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f, Loader=yaml.FullLoader)
+        if host_setting is not None:
+            params = update_nested_dict(params, host_setting)
+            # write to file
+        with open(os.path.join(params['hugs_io'], run_name + '.yml'), 'w') as f:
+            yaml.dump(params, f, default_flow_style=False)
 
         self.data_dir = params['data_dir']
         self.rerun_path = rerun_path
@@ -155,10 +171,12 @@ class PipeConfig(object):
 
     def set_brick_id(self, brick):
         """
-        Setup the tract/patch. This must be done before running the pipeline
+        Setup the DECaLS brick. This must be done before running the pipeline
 
         Parameters
         ----------
+        brick : string
+            DECaLS brick name.
         """
         self.brick = brick
         self.setup_logger(brick)

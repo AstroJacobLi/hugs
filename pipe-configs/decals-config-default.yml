@@ -2,10 +2,10 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD' 
+data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/' 
 hugs_io: '/scratch/gpfs/jiaxuanl/Data/SALAD/hugs-io'
- 
-mean_seeing_sigma: 1.5 # #1.5
+
+mean_seeing_sigma: 1.5
 
 pixel_scale: 0.262
 
@@ -17,32 +17,33 @@ band_detect: 'r'
 
 band_mask: 'r'
 
-band_verify: 'g' # 'r'
+band_verify: 'g'
 
-band_meas: 'gr'  # 'gr' # band_detect always included
+band_meas: 'gr' # band_detect always included
 
 thresh_type: SB  # SB or stddev
 
 thresh_low:
-    thresh: 25.5 #24.5 # mag/arcsec^2 
+    thresh: 24. #24.5 # mag/arcsec^2 
     npix: 20
-    n_sig_grow: 25
+    n_sig_grow: 15
     isogrow: False
     thresh_type: stdev
 
 thresh_high:
-    thresh: 22.5 #22.5 # mag/arcsec^2
+    thresh: 21.75 #22.5 # mag/arcsec^2
     npix: 10
-    n_sig_grow: 20
+    n_sig_grow: 10
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.10  # per footprint
+    max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
-    n_sig_grow: 20.0
+    n_sig_grow: 10.0
     min_pix_low_thresh: 3 psf sigma
 
-hsc_small_sources_r_max: 3 #2.0
+hsc_small_sources_r_max: 4 #2.0
+lsb_smooth_factor: 1.75 # lsb_smooth_factor * psf_sigma
 
 sep_steps:
     extract_pixstack: 600000
@@ -64,24 +65,26 @@ sep_steps:
 
 sextractor:
     config: 
+        BACK_SIZE: 250
         PIXEL_SCALE: 0.262
-        DETECT_THRESH: 0.7
+        DETECT_THRESH: 2.5
         THRESH_TYPE: RELATIVE
         # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/default.conv'
-        FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
+        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
         # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_6.0_31x31.conv'
-        BACK_SIZE: 512
+        # FILTER_NAME: "/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io/gauss_5.0_15x15.conv"
+        FILTER: 'N'
         VERBOSE_TYPE: 'QUIET'
-        DETECT_MINAREA: 150
+        DETECT_MINAREA: 600
         MAG_ZEROPOINT: 22.5
         SEEING_FWHM: 0.7 # this is used for star/gal separation
         DEBLEND_NTHRESH: 32
         DEBLEND_MINCONT: 0.1
         MEMORY_PIXSTACK: 900000
-        BACKPHOTO_TYPE: "LOCAL"
+        # BACKPHOTO_TYPE: "LOCAL"
     delete_created_files: False
     sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io'
-    verify_max_sep: 15  # pixels
+    verify_max_sep: 35 # pixels
 
 ####################################################
 # Synths
