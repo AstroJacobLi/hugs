@@ -350,7 +350,7 @@ def make_noise_image(masked_image, random_state=None):
     noise_array = back_rms*rng.randn(dims[1], dims[0])
     return noise_array
 
-def make_noise_image_jl(masked_image, back_size=128, back_filtersize=5, random_state=None):
+def make_noise_image_jl(masked_image, random_state=None, back_size=128, back_filtersize=5):
     """
     Generate Gaussian noise image according to the background and rms level of the input iamge.
     

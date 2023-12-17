@@ -42,13 +42,13 @@ clean:
     n_sig_grow: 10.0
     min_pix_low_thresh: 3 psf sigma
 
-hsc_small_sources_r_max: 4 #2.0
+hsc_small_sources_r_max: 6 #2.0
 lsb_smooth_factor: 1.75 # lsb_smooth_factor * psf_sigma
 
 sep_steps:
     extract_pixstack: 600000
     sep_point_sources:
-        min_radius: 3 #2.0 # arcsec
+        min_radius: 2 #2.0 # arcsec
         mask_grow: 3
         do_measure: True
         sep_extract_kws:
@@ -65,7 +65,7 @@ sep_steps:
 
 sextractor:
     config: 
-        BACK_SIZE: 250
+        BACK_SIZE: 350
         PIXEL_SCALE: 0.262
         DETECT_THRESH: 2.5
         THRESH_TYPE: RELATIVE
@@ -78,7 +78,7 @@ sextractor:
         DETECT_MINAREA: 600
         MAG_ZEROPOINT: 22.5
         SEEING_FWHM: 0.7 # this is used for star/gal separation
-        DEBLEND_NTHRESH: 32
+        DEBLEND_NTHRESH: 8
         DEBLEND_MINCONT: 0.1
         MEMORY_PIXSTACK: 900000
         # BACKPHOTO_TYPE: "LOCAL"

@@ -198,5 +198,7 @@ class SepLsstStepper(SepStepperBase):
         self.image = exposure.getImage().getArray()
         # self.psf_fwhm = utils.get_psf_sigma(exposure) * gaussian_sigma_to_fwhm
         self.psf_fwhm = psf_fwhm
-        self.noise_image =  utils.make_noise_image(exposure.getMaskedImage(), 
-                                                   random_state)
+        # self.noise_image =  utils.make_noise_image(exposure.getMaskedImage(), 
+        #                                            random_state)
+        self.noise_image =  utils.make_noise_image_jl(exposure.getMaskedImage(),
+                                                      random_state)

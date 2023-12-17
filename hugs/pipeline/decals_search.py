@@ -14,7 +14,7 @@ from ..utils import pixscale, zpt
 from .. import utils
 from .. import imtools
 from .. import primitives as prim
-from ..cattools import xmatch
+from ..cattools import xmatch, xmatch_re
 from ..star_mask import scott_star_mask
 
 import copy
@@ -102,6 +102,15 @@ def run(cfg, reset_mask_planes=False):
                 return results
 
         ############################################################
+        # Check data quality in both bands
+        ############################################################
+        depth_ratio = stat_task.run(cfg.exp['g'].getMaskedImage()).stdev / stat_task.run(cfg.exp['r'].getMaskedImage()).stdev
+        cfg.logger.info(f'depth ratio r / g = {depth_ratio}')
+        if depth_ratio > 1: # when r-band is deeper
+            cfg.psf_sigma['r'] *= 1.5
+            cfg.psf_sigma['g'] *= 1.5
+
+        ############################################################
         # Image thesholding at low and high thresholds. In both
         # cases, the image is smoothed at the psf scale.
         ############################################################
@@ -152,8 +161,8 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         w = exp_clean.getWcs()
         img = exp_clean.getImage().getArray()
-        back = sep.Background(img, bw=32, bh=32)
-        cat, segmap = sep.extract(img - back.back(), 4, err=back.rms(), minarea=10, 
+        back = sep.Background(img, bw=16, bh=16)
+        cat, segmap = sep.extract(img - back.back(), 3.5, err=back.rms(), minarea=10, 
                                   deblend_nthresh=32, deblend_cont=0.001, 
                                   segmentation_map=True)
         mask = exp_clean.getMask()
@@ -177,7 +186,7 @@ def run(cfg, reset_mask_planes=False):
 
         if cfg.sep_steps is not None:
             sep_stepper = SepLsstStepper(config=cfg.sep_steps)
-            sep_stepper.setup_image(exp_clean, cfg.psf_sigma * 2.354, cfg.rng) # TODO: check this
+            sep_stepper.setup_image(exp_clean, cfg.psf_sigma[cfg.band_detect] * 2.354, cfg.rng) # TODO: check this
 
             step_mask = cfg.exp.get_mask_array(band=cfg.band_detect,
                 planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
@@ -230,8 +239,12 @@ def run(cfg, reset_mask_planes=False):
         for band in cfg.bands:
             exp_det[band] = cfg.exp[band].clone()
             mi = exp_det[band].getMaskedImage()
+            if band == 'g':
+                extra_smooth = np.sqrt(depth_ratio)
+            else:
+                extra_smooth = 1
             mi = imtools.smooth_gauss(mi, 
-                                      sigma=cfg.lsb_smooth_factor * cfg.psf_sigma,
+                                      sigma=cfg.lsb_smooth_factor * cfg.psf_sigma[band] * extra_smooth,
                                       use_scipy=True, inplace=False)
             exp_det[band].setMaskedImage(mi)
             # exp_det[band].setImage(afwImage.ImageF( f'/scratch/gpfs/jiaxuanl/Data/scott/decals/ngc5055/tracts_sims/det_tmp/1979p420-{band}_lsb.fits')) # image with star mask
@@ -267,14 +280,19 @@ def run(cfg, reset_mask_planes=False):
 
         for band in cfg.band_verify:
             cfg.logger.info('verifying dection in {}-band'.format(band))
+            if band == 'g':
+                cfg.sex_config['DETECT_THRESH'] = 2.25
             sources_verify = prim.detect_sources(
-                cfg.exp_det[band], # cfg.exp[band], 
+                cfg.exp_det[band],
                 cfg.sex_config, cfg.sex_io_dir,
                 label=label, delete_created_files=cfg.delete_created_files,
                 original_fn=cfg.exp.fn[band])
             if len(sources_verify) > 0:
                 cfg.logger.info(f'total sources in {band}-band = {len(sources_verify)}')
-                match_masks, _ = xmatch(
+                # match_masks, _ = xmatch(
+                    # sources, sources_verify, max_sep=cfg.verify_max_sep)
+                sources['re'] = sources[f'flux_radius_50_{cfg.band_detect}']
+                match_masks, _ = xmatch_re(
                     sources, sources_verify, max_sep=cfg.verify_max_sep)
                 txt = 'cuts: {} out of {} objects detected in {}-band'.format(
                     len(match_masks[0]), len(sources), band)

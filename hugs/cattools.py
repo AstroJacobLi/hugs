@@ -95,3 +95,28 @@ def xmatch(cat_1, cat_2, xy_cols=['x_image', 'y_image'], max_sep=5):
     match_masks = (match_1, match_2)
     mismatch_masks = (mismatch_1, mismatch_2)
     return match_masks, mismatch_masks 
+
+
+
+def xmatch_re(cat_1, cat_2, xy_cols=['x_image', 'y_image'], max_sep=5):
+    """
+    Crossmatch catalogs on patch.
+    """
+    if type(cat_1)==Table:
+        coords_1 = cat_1[xy_cols].to_pandas().values
+    else:
+        coords_1 = cat_1[xy_cols].values
+    if type(cat_2)==Table:
+        coords_2 = cat_2[xy_cols].to_pandas().values
+    else:
+        coords_2 = cat_2[xy_cols].values
+    
+    kdt = cKDTree(coords_1)
+    dist, idx = kdt.query(coords_2)
+    match_2 = dist < max_sep * cat_1[idx]['re'].data
+    match_1 = idx[match_2]
+    mismatch_2 = ~match_2
+    mismatch_1 = idx[mismatch_2]
+    match_masks = (match_1, match_2)
+    mismatch_masks = (mismatch_1, mismatch_2)
+    return match_masks, mismatch_masks 
