@@ -350,7 +350,7 @@ def make_noise_image(masked_image, random_state=None):
     noise_array = back_rms*rng.randn(dims[1], dims[0])
     return noise_array
 
-def make_noise_image_jl(masked_image, random_state=None, back_size=128, back_filtersize=5):
+def make_noise_image_jl(masked_image, random_state=None, mask=None, back_size=128, back_filtersize=5):
     """
     Generate Gaussian noise image according to the background and rms level of the input iamge.
     
@@ -359,6 +359,8 @@ def make_noise_image_jl(masked_image, random_state=None, back_size=128, back_fil
     masked_image : lsst.afw.image.MaskedImageF
         Masked image for calculating noise image shape and the scale of the 
         noise fluctuations.
+    mask: numpy array
+        Mask array. If not given, use the mask in masked_image.
     back_size : int, optional
         Size of the background mesh.
     back_filtersize : int, optional
@@ -372,10 +374,12 @@ def make_noise_image_jl(masked_image, random_state=None, back_size=128, back_fil
         The noise image. 
     """
     rng = check_random_state(random_state)
+    mask = get_mask_array(masked_image, planes=['BRIGHT_OBJECT']) if mask is None else mask
     bkg, rms = sky_bkg_rms(masked_image.getImage().getArray(), 
+                           mask=mask,
                            back_size=back_size, 
                            back_filtersize=back_filtersize)
-    return rng.normal(bkg, rms)
+    return rng.normal(bkg, np.abs(rms))
 
 def solid_angle(ra_lim, dec_lim):
     """
@@ -530,7 +534,7 @@ def euclidean_dist_to_angular_dist(d, r=1):
     return theta
 
 ## JL
-def sky_bkg_rms(image, back_size=128, back_filtersize=5):
+def sky_bkg_rms(image, mask=None, back_size=128, back_filtersize=5):
     """
     Return the RMS of the sky background in the current image.
 
@@ -545,10 +549,11 @@ def sky_bkg_rms(image, back_size=128, back_filtersize=5):
     """
     import sep
     try:
-        bkg = sep.Background(image, bw=back_size, bh=back_size,
+        bkg = sep.Background(image, mask=mask, bw=back_size, bh=back_size,
                              fw=back_filtersize, fh=back_filtersize)
     except:
         bkg = sep.Background(image.byteswap().newbyteorder(), 
+                             mask=mask,
                              bw=back_size, bh=back_size,
                              fw=back_filtersize, fh=back_filtersize)
     return bkg.back(), bkg.rms()

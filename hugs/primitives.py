@@ -112,8 +112,8 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='BRIGHT_O
     # generate array of gaussian noise
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
-    noise_array = utils.make_noise_image(mi, random_state)
-    # noise_array = utils.make_noise_image_jl(mi, back_size=32)
+    # noise_array = utils.make_noise_image(mi, random_state)
+    noise_array = utils.make_noise_image_jl(mi, random_state, back_size=128)
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
@@ -196,6 +196,7 @@ def remove_small_sources_thresholding(exposure, min_radius_arcsec, pixel_scale,
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     noise_array = utils.make_noise_image(mi, random_state)
+    # noise_array = utils.make_noise_image_jl(mi, random_state, back_size=32)
 
     threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
     fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)

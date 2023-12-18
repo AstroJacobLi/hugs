@@ -176,7 +176,10 @@ class SepStepperBase(object):
         logger.info('detecting with a threshold of {} x background'.\
                     format(sep_extract_kws['thresh']))
         sources, segmap =  sep.extract(
-            img_sub, err=bkg.rms(), segmentation_map=True, **sep_extract_kws)
+            img_sub, 
+            err=bkg.globalrms,
+            # err=bkg.rms(), 
+            segmentation_map=True, **sep_extract_kws)
 
         sources = Table(sources)
         sources = sources[sources['flux'] > 0]

@@ -102,7 +102,8 @@ def run(cfg, reset_mask_planes=False):
                 return results
 
         ############################################################
-        # Check data quality in both bands
+        # Check data quality in both bands. If the r-band is deeper,
+        # we increase the smoothing scale.
         ############################################################
         depth_ratio = stat_task.run(cfg.exp['g'].getMaskedImage()).stdev / stat_task.run(cfg.exp['r'].getMaskedImage()).stdev
         cfg.logger.info(f'depth ratio r / g = {depth_ratio}')
@@ -157,19 +158,38 @@ def run(cfg, reset_mask_planes=False):
                                **cfg.clean)
 
         ############################################################
-        # Remove small sources using SEP
+        # Remove small sources using thresholding. 
+        # This is to remove **faint** and **small** sources.
+        # The next step using SEP is to remove **bright** and **small** sources.
+        ############################################################
+        # Update to HUGS (JL 2023-12-17) #
+        # Here we do two rounds of source detection. The first round
+        # uses a finer grid for background and use bkg.rms() for detection.
+        # This make sure that we detect faint sources in good SNR regions.
+        # The second round uses a coarser grid for background and use
+        # bkg.globalrms for detection. This make sure that we detect
+        # sources in low SNR regions (which occur a lot to DECaLS DR10).
         ############################################################
         w = exp_clean.getWcs()
         img = exp_clean.getImage().getArray()
-        back = sep.Background(img, bw=16, bh=16)
-        cat, segmap = sep.extract(img - back.back(), 3.5, err=back.rms(), minarea=10, 
-                                  deblend_nthresh=32, deblend_cont=0.001, 
-                                  segmentation_map=True)
+        
         mask = exp_clean.getMask()
         if 'SMALL' in mask.getMaskPlaneDict().keys():
             mask.removeAndClearMaskPlane('SMALL')
         mask_detect = afwImage.ImageF(exp_clean.getDimensions())
-        mask_detect.array[:] = segmap
+        
+        # Round 1
+        back = sep.Background(img, bw=64, bh=64)
+        cat, segmap1 = sep.extract(img - back.back(), 3.5, err=back.rms(), minarea=10, 
+                                deblend_nthresh=32, deblend_cont=0.001, 
+                                segmentation_map=True)
+        # Round 2
+        back = sep.Background(img, bw=1200, bh=1200)
+        cat, segmap2 = sep.extract(img - back.back(), 3., err=back.globalrms, minarea=5, 
+                                deblend_nthresh=32, deblend_cont=0.001, filter_kernel=None,
+                                segmentation_map=True)
+        # Combine
+        mask_detect.array[:] = segmap1 + segmap2
         footprint_set = afwDet.FootprintSet(mask_detect, afwDet.Threshold(0.01))
         mask.addMaskPlane('DETECTED')
         footprint_set.setMask(mask, 'DETECTED')
@@ -181,7 +201,7 @@ def run(cfg, reset_mask_planes=False):
         cfg.mi_clean = mi_clean
 
         ############################################################
-        # use sep to find and mask point-like sources
+        # use SEP to find and mask bright point-like sources
         ############################################################
 
         if cfg.sep_steps is not None:
@@ -195,41 +215,37 @@ def run(cfg, reset_mask_planes=False):
 
             cfg.logger.info('generating and applying sep ellipse mask')
             r_min = cfg.sep_min_radius
-            sep_sources = sep_sources[sep_sources['flux_radius'] < r_min]
+            sep_sources = sep_sources[sep_sources['flux_radius'] < r_min] # Johnny used "flux_radius" here
             ell_msk = sep_ellipse_mask(
                 sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
-            nimage_replace = sep_stepper.noise_image[ell_msk]
+            nimage_replace = utils.make_noise_image_jl(mi_clean, cfg.rng, back_size=32)[ell_msk]
+            # nimage_replace = sep_stepper.noise_image[ell_msk]
             mi_clean.getImage().getArray()[ell_msk] = nimage_replace
             mask_clean.addMaskPlane('SMALL')
             mask_clean.getArray()[
                 ell_msk] += mask_clean.getPlaneBitMask('SMALL')
 
-        # cfg.exp[cfg.band_detect].setMaskedImage(imtools.smooth_gauss(cfg.exp[cfg.band_detect].getMaskedImage(), cfg.psf_sigma))
-        # cfg.exp[cfg.band_verify].setMaskedImage(imtools.smooth_gauss(cfg.exp[cfg.band_verify].getMaskedImage(), cfg.psf_sigma))
-        # mi = exp_clean.getMaskedImage()
-        # mi = imtools.smooth_gauss(mi, cfg.psf_sigma * 1.5)
-        # # return None
-        # exp_clean.setMaskedImage(mi)
         cfg.exp_clean = exp_clean
-        
+        # keep the original exposure before cleaning
         cfg.exp_ori = copy.deepcopy(cfg.exp)
         
         ############################################################
-        # Detect sources and measure props with SExtractor
+        # Clean images in both bands according to the mask we just
+        # generated
         ############################################################
-
-        cfg.logger.info('detecting in {}-band'.format(cfg.band_detect))
-        label = '{}'.format(cfg.brick)
-
         cfg.logger.info('cleaning non-detection bands')
-        # replace = cfg.exp.get_mask_array(cfg.band_detect, planes=['CLEANED', "SMALL", 'BRIGHT_OBJECT'])
         replace = utils.get_mask_array(exp_clean.getMaskedImage(), planes=['CLEANED', "SMALL", 'BRIGHT_OBJECT'])
         for band in cfg.bands:
-            # if band != cfg.band_detect: # also clean the detection band
             mi_band = cfg.exp[band].getMaskedImage()
-            noise_array = utils.make_noise_image(mi_band, cfg.rng)
+            noise_array = utils.make_noise_image_jl(mi_band, cfg.rng, replace, back_size=128)
             mi_band.getImage().getArray()[replace] = noise_array[replace]
 
+
+        ############################################################
+        # Detect sources and measure props with SExtractor
+        ############################################################
+        cfg.logger.info('detecting in {}-band'.format(cfg.band_detect))
+        label = '{}'.format(cfg.brick)
         
         ############################################################
         # Smooth the original images for detection
@@ -245,9 +261,9 @@ def run(cfg, reset_mask_planes=False):
                 extra_smooth = 1
             mi = imtools.smooth_gauss(mi, 
                                       sigma=cfg.lsb_smooth_factor * cfg.psf_sigma[band] * extra_smooth,
-                                      use_scipy=True, inplace=False)
+                                      use_scipy=True, 
+                                      inplace=False)
             exp_det[band].setMaskedImage(mi)
-            # exp_det[band].setImage(afwImage.ImageF( f'/scratch/gpfs/jiaxuanl/Data/scott/decals/ngc5055/tracts_sims/det_tmp/1979p420-{band}_lsb.fits')) # image with star mask
         cfg.exp_det = exp_det
         
         ############################################################
@@ -255,7 +271,7 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         sources = Table()
 
-        for band in cfg.bands:
+        for band in [cfg.band_detect]:#cfg.bands:
             cfg.logger.info('measuring in {}-band'.format(band))
             dual_exp = None if band == cfg.band_detect else cfg.exp[band]
             sources_band = prim.detect_sources(
@@ -281,7 +297,7 @@ def run(cfg, reset_mask_planes=False):
         for band in cfg.band_verify:
             cfg.logger.info('verifying dection in {}-band'.format(band))
             if band == 'g':
-                cfg.sex_config['DETECT_THRESH'] = 2.25
+                cfg.sex_config['DETECT_THRESH'] = cfg.sex_config['DETECT_THRESH'] - 0.25
             sources_verify = prim.detect_sources(
                 cfg.exp_det[band],
                 cfg.sex_config, cfg.sex_io_dir,
@@ -291,7 +307,9 @@ def run(cfg, reset_mask_planes=False):
                 cfg.logger.info(f'total sources in {band}-band = {len(sources_verify)}')
                 # match_masks, _ = xmatch(
                     # sources, sources_verify, max_sep=cfg.verify_max_sep)
-                sources['re'] = sources[f'flux_radius_50_{cfg.band_detect}']
+                # sources['re'] = sources[f'flux_radius_50_{cfg.band_detect}']
+                # sources['re'] = sources['fwhm_r']
+                sources['re'] = np.sqrt(sources['a_image'] * sources['b_image'])
                 match_masks, _ = xmatch_re(
                     sources, sources_verify, max_sep=cfg.verify_max_sep)
                 txt = 'cuts: {} out of {} objects detected in {}-band'.format(

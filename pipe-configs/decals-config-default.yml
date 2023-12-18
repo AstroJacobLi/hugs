@@ -48,7 +48,7 @@ lsb_smooth_factor: 1.75 # lsb_smooth_factor * psf_sigma
 sep_steps:
     extract_pixstack: 600000
     sep_point_sources:
-        min_radius: 2 #2.0 # arcsec
+        min_radius: 6 #2.0 # pixel
         mask_grow: 3
         do_measure: True
         sep_extract_kws:
@@ -65,7 +65,7 @@ sep_steps:
 
 sextractor:
     config: 
-        BACK_SIZE: 350
+        BACK_SIZE: 450
         PIXEL_SCALE: 0.262
         DETECT_THRESH: 2.5
         THRESH_TYPE: RELATIVE
