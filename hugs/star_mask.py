@@ -84,7 +84,7 @@ def get_gaia_stars(exposure, size_buffer=1.4, logger=None):
         return gaia_results
     
 
-def mask_cross(mask, x, y, length, width):
+def mask_cross(mask, x, y, length, width, rotate=0):
     """
     Mask a cross shape in the given mask, in place.
     Similar to `sep.mask_ellipse`, but for a cross shape.
@@ -97,6 +97,8 @@ def mask_cross(mask, x, y, length, width):
         Center of the cross.
     length, width : float
         Length and width of the cross.
+    rotate : float, optional
+        Rotation angle of the cross, in degrees.
         
     Returns
     -------
@@ -114,6 +116,8 @@ def mask_cross(mask, x, y, length, width):
         ])
     poly2 = affinity.rotate(poly1, 90, 'center')
     cross = poly1.union(poly2)
+    if rotate != 0:
+        cross = affinity.rotate(cross, rotate, 'center')
     flag = rasterio.features.rasterize([cross], out_shape=mask.shape).astype(bool)
     mask[flag] = True
     
@@ -183,7 +187,8 @@ def scott_star_mask(exposure, p1, p2, bright_thresh):
         poly[0] *= p1
         poly[1] += p2
         
-        # Mask bright stars
+        # Mask bright stars. We have a circular mask and a cross mask.
+        # For these bright stars, we also rotate the cross mask by 45 degrees.
         bright_buffer = 400
         x, y = w.skyToPixelArray(np.deg2rad(gaia['ra'].data), 
                                 np.deg2rad(gaia['dec'].data))
@@ -203,7 +208,9 @@ def scott_star_mask(exposure, p1, p2, bright_thresh):
                 bokeh_size = 200
             bokeh_size = np.min([bokeh_size, 1800]) # max size is 1800
             sep.mask_ellipse(mask_bright, x, y, bokeh_size, bokeh_size, 0, r=1)
-            mask_cross(mask_bright, x, y, 4 * bokeh_size, 2 * bokeh_size//5)
+            mask_cross(mask_bright, x, y, 5 * bokeh_size, 2 * bokeh_size//5, rotate=0)
+            if star['phot_g_mean_mag'] < 12:
+                mask_cross(mask_bright, x, y, 3 * bokeh_size, 1.5 * bokeh_size//8, rotate=45)
             
         # Mask fainter stars
         size_buffer = 0
