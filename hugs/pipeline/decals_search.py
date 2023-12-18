@@ -215,7 +215,7 @@ def run(cfg, reset_mask_planes=False):
 
             cfg.logger.info('generating and applying sep ellipse mask')
             r_min = cfg.sep_min_radius
-            sep_sources = sep_sources[sep_sources['flux_radius'] < r_min] # Johnny used "flux_radius" here
+            sep_sources = sep_sources[sep_sources['fwhm'] < r_min] # Johnny used "flux_radius" here
             ell_msk = sep_ellipse_mask(
                 sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
             nimage_replace = utils.make_noise_image_jl(mi_clean, cfg.rng, back_size=32)[ell_msk]
@@ -271,7 +271,7 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         sources = Table()
 
-        for band in [cfg.band_detect]:#cfg.bands:
+        for band in cfg.bands:
             cfg.logger.info('measuring in {}-band'.format(band))
             dual_exp = None if band == cfg.band_detect else cfg.exp[band]
             sources_band = prim.detect_sources(
@@ -307,9 +307,9 @@ def run(cfg, reset_mask_planes=False):
                 cfg.logger.info(f'total sources in {band}-band = {len(sources_verify)}')
                 # match_masks, _ = xmatch(
                     # sources, sources_verify, max_sep=cfg.verify_max_sep)
-                # sources['re'] = sources[f'flux_radius_50_{cfg.band_detect}']
+                sources['re'] = sources[f'flux_radius_50_{cfg.band_detect}']
                 # sources['re'] = sources['fwhm_r']
-                sources['re'] = np.sqrt(sources['a_image'] * sources['b_image'])
+                # sources['re'] = np.sqrt(sources['a_image'] * sources['b_image'])
                 match_masks, _ = xmatch_re(
                     sources, sources_verify, max_sep=cfg.verify_max_sep)
                 txt = 'cuts: {} out of {} objects detected in {}-band'.format(
