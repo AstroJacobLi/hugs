@@ -11,7 +11,7 @@ import traceback
 import lsst.geom as geom
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 
-def get_gaia_stars(exposure, size_buffer=1.4, logger=None):
+def get_gaia_stars(exposure, size_buffer=1.4, tigress=True, logger=None):
     """
     Search for bright stars using GAIA catalogs on Tigress (`/tigress/HSC/refcats/htm/gaia_dr3_20230707`).
     For more information, see https://community.lsst.org/t/gaia-dr2-reference-catalog-in-lsst-format/3901.
@@ -25,13 +25,14 @@ def get_gaia_stars(exposure, size_buffer=1.4, logger=None):
         Buffer size in units of image size. 
         This is used to search for stars in a slightly larger area than the image.
         Default: 1.4
-
+    tigress: bool, optional
+        Whether to search for GAIA stars on Princeton's Tigress.
+    
     Return
     ------
     gaia_results: `astropy.table.Table` object
         A catalog of matched stars.
     """
-    gaia_dir = '/tigress/HSC/refcats/htm/gaia_dr3_20230707'
     
     # Get the image size
     w = exposure.getWcs()
@@ -39,37 +40,49 @@ def get_gaia_stars(exposure, size_buffer=1.4, logger=None):
     afw_coord = w.pixelToSky(bbox.centerY, bbox.centerX) # maybe wrong order
     img_size = (w.getPixelScale() * max(bbox.getDimensions())).asDegrees()
     
-    # Search for stars in Gaia DR3 catatlogs, which are stored in
-    # `/tigress/HSC/refcats/htm/gaia_dr3_20230707`.
-    try:
-        from lsst.meas.algorithms.htmIndexer import HtmIndexer
-        import lsst.geom as geom
+    if tigress:
+        # Search for stars in Gaia DR3 catatlogs, which are stored in
+        # `/tigress/HSC/refcats/htm/gaia_dr3_20230707`.
+        gaia_dir = '/tigress/HSC/refcats/htm/gaia_dr3_20230707'
+        try:
+            from lsst.meas.algorithms.htmIndexer import HtmIndexer
+            import lsst.geom as geom
 
-        def getShards(afw_coord, radius):
-            htm = HtmIndexer(depth=7)
-            shards, onBoundary = htm.getShardIds(
-                afw_coord, radius * geom.degrees)
-            return shards
+            def getShards(afw_coord, radius):
+                htm = HtmIndexer(depth=7)
+                shards, onBoundary = htm.getShardIds(
+                    afw_coord, radius * geom.degrees)
+                return shards
 
-    except ImportError as e:
-        # Output expected ImportErrors.
+        except ImportError as e:
+            # Output expected ImportErrors.
+            if logger is not None:
+                logger.error(e)
+                logger.error(
+                    'LSST Pipe must be installed to query Gaia stars on Tigress.')
+            print(e)
+            print('LSST Pipe must be installed to query Gaia stars on Tigress.')
+
+        # find out the Shard ID of target area in the HTM (Hierarchical triangular mesh) system
         if logger is not None:
-            logger.error(e)
-            logger.error(
-                'LSST Pipe must be installed to query Gaia stars on Tigress.')
-        print(e)
-        print('LSST Pipe must be installed to query Gaia stars on Tigress.')
+            logger.info('    Taking Gaia catalogs stored in `Tigress`')
+            print('    Taking Gaia catalogs stored in `Tigress`')
 
-    # find out the Shard ID of target area in the HTM (Hierarchical triangular mesh) system
-    if logger is not None:
-        logger.info('    Taking Gaia catalogs stored in `Tigress`')
-        print('    Taking Gaia catalogs stored in `Tigress`')
+        shards = getShards(afw_coord, img_size * size_buffer) # slightly larger than the image size
 
-    shards = getShards(afw_coord, img_size * size_buffer) # slightly larger than the image size
-
-    cat = vstack([Table.read(os.path.join(gaia_dir, f'{index}.fits')) for index in shards])
-    cat['coord_ra'] = cat['coord_ra'].to(u.degree)
-    cat['coord_dec'] = cat['coord_dec'].to(u.degree)
+        cat = vstack([Table.read(os.path.join(gaia_dir, f'{index}.fits')) for index in shards])
+        cat['coord_ra'] = cat['coord_ra'].to(u.degree)
+        cat['coord_dec'] = cat['coord_dec'].to(u.degree)
+        
+    else:
+        # Search for stars
+        from astroquery.gaia import Gaia
+        Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source"
+        gaia_results = Gaia.query_object_async(
+            coordinate=SkyCoord(afw_coord.ra, afw_coord.dec, unit='deg'),
+            width=img_size.asDegrees() * size_buffer * u.deg,
+            height=img_size.asDegrees() * size_buffer * u.deg,
+            verbose=False)
 
     # Trim this catalog a little bit
     # Ref: https://github.com/MerianSurvey/caterpillar/blob/main/caterpillar/catalog.py
@@ -122,7 +135,7 @@ def mask_cross(mask, x, y, length, width, rotate=0):
     mask[flag] = True
     
     
-def scott_star_mask(exposure, p1, p2, bright_thresh):
+def scott_star_mask(exposure, p1, p2, bright_thresh, tigress=True):
     """
     Star mask for DECaLS image, based on Scott Carlsten's code.
     Step 1: Do a detection for bright objects, and match with Gaia catalog.
@@ -153,7 +166,7 @@ def scott_star_mask(exposure, p1, p2, bright_thresh):
         bbox = exposure.getBBox()
         
         # Get gaia star catalog
-        gaia = get_gaia_stars(exposure)
+        gaia = get_gaia_stars(exposure, tigress=tigress)
         
         # Do a detection for bright objects, and match with Gaia catalog
         w = exposure.getWcs()

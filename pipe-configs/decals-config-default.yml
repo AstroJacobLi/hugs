@@ -82,11 +82,9 @@ sextractor:
         DEBLEND_MINCONT: 0.1
         MEMORY_PIXSTACK: 900000
         WEIGHT_TYPE: "BACKGROUND" # this is IMPORTANT!!
-        # BACKPHOTO_TYPE: "LOCAL"
-
     delete_created_files: False
     sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io'
-    verify_max_sep: 35 # pixels
+    verify_max_sep: 4 # We no longer use pixels for separation. Instead, we use `verify_max_sep` times r_eff for each object.
 
 ####################################################
 # Synths
