@@ -79,7 +79,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
 
 
 def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='BRIGHT_OBJECT',
-          max_frac_high_thresh=0.15, rgrow=None, random_state=None,
+          max_frac_high_thresh=0.15, rgrow=None, random_state=None, back_size=128,
           bright_object_mask=True, min_pix_low_thresh=0):
     """
     Clean image of bright sources and associated diffuse regions by 
@@ -113,7 +113,7 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH', name_star_mask='BRIGHT_O
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     # noise_array = utils.make_noise_image(mi, random_state)
-    noise_array = utils.make_noise_image_jl(mi, random_state, back_size=128)
+    noise_array = utils.make_noise_image_jl(mi, random_state, back_size=back_size)
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())

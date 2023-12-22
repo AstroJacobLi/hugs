@@ -166,6 +166,7 @@ def scott_star_mask(exposure, p1, p2, bright_thresh, tigress=True):
         bbox = exposure.getBBox()
         
         # Get gaia star catalog
+        assert tigress, 'Scott star mask only works with Tigress=True.'
         gaia = get_gaia_stars(exposure, tigress=tigress)
         
         # Do a detection for bright objects, and match with Gaia catalog

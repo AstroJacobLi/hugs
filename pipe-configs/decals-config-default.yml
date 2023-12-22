@@ -41,6 +41,7 @@ clean:
     name_high: 'THRESH_HIGH'
     n_sig_grow: 10.0
     min_pix_low_thresh: 3 psf sigma
+    back_size: 160
 
 hsc_small_sources_r_max: 6 #2.0
 lsb_smooth_factor: 1.75 # lsb_smooth_factor * psf_sigma

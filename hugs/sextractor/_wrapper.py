@@ -145,5 +145,5 @@ class Wrapper(object):
         for key, val in self.config.items():
             cmd += ' -'+key+' '+str(val)
 
-        print('\nrunning', '\n-------\n'+cmd+'\n')
+        # print('\nrunning', '\n-------\n'+cmd+'\n')
         subprocess.call(cmd, shell=True)

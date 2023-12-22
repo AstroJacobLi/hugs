@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 from astropy.logger import AstropyLogger
 

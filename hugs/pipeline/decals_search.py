@@ -106,7 +106,7 @@ def run(cfg, reset_mask_planes=False):
         # we increase the smoothing scale.
         ############################################################
         depth_ratio = stat_task.run(cfg.exp['g'].getMaskedImage()).stdev / stat_task.run(cfg.exp['r'].getMaskedImage()).stdev
-        cfg.logger.info(f'depth ratio r / g = {depth_ratio}')
+        cfg.logger.info(f'depth ratio r / g = {depth_ratio:.3f}')
         if depth_ratio > 1: # when r-band is deeper
             cfg.psf_sigma['r'] *= 1.5
             cfg.psf_sigma['g'] *= 1.5
@@ -214,7 +214,7 @@ def run(cfg, reset_mask_planes=False):
                                              mask=step_mask)
 
             cfg.logger.info('generating and applying sep ellipse mask')
-            r_min = cfg.sep_min_radius
+            r_min = cfg.sep_min_radius  # in pixel
             sep_sources = sep_sources[sep_sources['fwhm'] < r_min] # Johnny used "flux_radius" here
             ell_msk = sep_ellipse_mask(
                 sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
@@ -332,9 +332,12 @@ def run(cfg, reset_mask_planes=False):
         cfg.exp.patch_meta.cleaned_frac = mask_fracs['cleaned_frac']
         cfg.exp.patch_meta.bright_obj_frac = mask_fracs['bright_object_frac']
 
-        cfg.logger.info('measuring mophology metrics')
+        cfg.logger.info('measuring morphology metrics')
         prim.measure_morphology_metrics(exp_clean.getImage().getArray(),
                                         sources)
+        
+        # Whether the object is within bright star mask
+        sources['bright_obj_masked'] = star_mask[sources['y_image'].data.astype(int), sources['x_image'].data.astype(int)]
 
         cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
 

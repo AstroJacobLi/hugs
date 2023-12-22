@@ -49,6 +49,81 @@ def plot_sep_sources(image, catalog, ec='lime', scale_ell=6, subplots=None,
 
     return fig, ax
 
+def plot_sex_sources(image, catalog, ec='lime', scale_ell=6, subplots=None,
+                     mark_centers=False, subplot_kw=dict(figsize=(10, 10)),
+                     ell_type='ab', per_lo=1.0, per_hi=99.8, mask=None,
+                     mask_kws=dict(cmap='Blues_r', alpha=0.5)):
+    """
+    Plot sources from SExtractor catalog, as returned by hugs. 
+    
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Image array.
+    catalog : astropy.table.Table
+        SExtractor catalog.
+    ec : str
+        Color of ellipse edges.
+    scale_ell : float
+        Scaling factor for ellipse size.
+    subplots : tuple
+        Tuple of matplotlib.pyplot.subplots.
+    mark_centers : bool
+        Whether mark the centers of the sources.
+    subplot_kw : dict
+        Keyword arguments for matplotlib.pyplot.subplots.
+    ell_type : str
+        Type of ellipse to plot. Options are 'ab' or 'kron_rad'.
+    per_lo : float
+        Lower percentile for image scaling.
+    per_hi : float
+        Upper percentile for image scaling.
+    mask : numpy.ndarray
+        Mask array.
+    mask_kws : dict
+        Keyword arguments for mask imshow.
+    """
+
+    fig, ax = subplots if subplots is not None else plt.subplots(**subplot_kw)
+
+    if image is not None:
+        if len(image.shape) == 2:
+            vmin, vmax = np.percentile(image, [per_lo, per_hi])
+            ax.imshow(image, vmin=vmin, vmax=vmax,
+                      origin='lower', cmap='gray_r')
+        else:
+            ax.imshow(image, origin='lower')
+        ax.set_xlim(0, image.shape[1])
+        ax.set_ylim(0, image.shape[0])
+
+    ax.set(xticks=[], yticks=[])
+
+    for src in catalog:
+        if ell_type == 'ab':
+            a = src['a_image']
+            b = src['b_image']
+        elif ell_type == 'kron_rad':
+            kronrad = src[ell_type]
+            a = kronrad * src['a_image']
+            b = kronrad * src['b_image']
+        else:
+            raise ValueError('ell_type must be `ab` or `kron_rad`')
+        e = Ellipse((src['x_image'], src['y_image']),
+                    width=scale_ell*a,
+                    height=scale_ell*b,
+                    angle=src['theta_image']*180/np.pi, 
+                    fc='none', ec=ec)
+        ax.add_patch(e)
+
+        if mark_centers:
+            ax.plot(src['x_image'], src['y_image'], 'r+')
+
+    if mask is not None:
+        mask = mask.astype(float)
+        mask[mask == 0.0] = np.nan
+        ax.imshow(mask, **mask_kws)
+
+    return fig, ax
 
 def show_step(img, ax, vmin, vmax, title, seg=None, alpha=0.6, cmap=plt.cm.gnuplot):
 
@@ -64,6 +139,10 @@ def show_step(img, ax, vmin, vmax, title, seg=None, alpha=0.6, cmap=plt.cm.gnupl
 
     ax.set_title(title, fontsize=15)
 
+
+###############################################################################
+# Below are from Scott's code. For completeness plot.
+###############################################################################
 
 def plot_radii(ax, mags, mu0s, dmod, re_col='black'):
     import matplotlib.patheffects as path_effects
