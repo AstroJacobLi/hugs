@@ -50,6 +50,7 @@ sep_steps:
     extract_pixstack: 600000
     sep_point_sources:
         min_radius: 6 #2.0 # pixel
+        radius_colname: 'flux_radius'
         mask_grow: 3
         do_measure: True
         sep_extract_kws:

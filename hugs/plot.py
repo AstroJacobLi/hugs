@@ -214,10 +214,12 @@ def completeness_plot(sims, dmod, mag='m_g', mu='mu_0_g',
     bins2 = np.linspace(bins2[0]-0.5*(bins2[1]-bins2[0]),
                         bins2[-1]+0.5*(bins2[1]-bins2[0]),
                         len(bins2)+1)
-#     range1 = [np.min(sims[mag]), np.max(sims[mag])]
-#     range2 = [np.min(sims[mu]), np.max(sims[mu])]
-#     bins1 = np.linspace(*range1, xbins)
-#     bins2 = np.linspace(*range2, ybins)
+    # print(bins1, bins2)
+    # range1 = [np.min(sims[mag]), np.max(sims[mag])]
+    # range2 = [np.min(sims[mu]), np.max(sims[mu])]
+    # bins1 = np.linspace(*range1, xbins)
+    # bins2 = np.linspace(*range2, ybins)
+    # print(bins1, bins2)
 
     detected = sims[sims['match'] > 0]
     dets, b1, b2 = np.histogram2d(detected[mag], detected[mu], [bins1, bins2])

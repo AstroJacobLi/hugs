@@ -124,6 +124,7 @@ class PipeConfig(object):
             sep_point_sources = self.sep_steps['sep_point_sources']
             self.sep_min_radius = sep_point_sources.pop('min_radius', 2.0)
             self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
+            self.sep_radius_colname = sep_point_sources.pop('radius_colname', 'flux_radius')
 
         # set patch id if given
         if brick is not None:

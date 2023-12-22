@@ -15,6 +15,7 @@ import sep
 from scipy import ndimage
 from astropy.io import fits
 from astropy.table import Table
+import astropy.units as u
 from astropy.nddata import Cutout2D
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_sigma_to_fwhm, gaussian_fwhm_to_sigma
@@ -338,9 +339,9 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         for i, frac in enumerate(sex_config['PHOT_FLUXFRAC'].split(',')):
             frac = str(int(100 * float(frac)))
             cat.rename_column('FLUX_RADIUS_' + str(i), 'flux_radius_' + frac)
-            cat['flux_radius_' + frac] *= utils.pixscale
+            cat['flux_radius_' + frac] = (cat['flux_radius_' + frac] * utils.pixscale).value * u.arcsec
 
-        cat['FWHM_IMAGE'] = cat['FWHM_IMAGE'] * utils.pixscale
+        cat['FWHM_IMAGE'] = (cat['FWHM_IMAGE'] * utils.pixscale).value * u.arcsec
         cat.rename_column('FWHM_IMAGE', 'FWHM')
 
         for name in cat.colnames:

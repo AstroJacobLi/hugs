@@ -5,7 +5,7 @@ import numpy as np
 import lsst.daf.persistence
 import lsst.afw.image as afwImage
 import lsst.afw.display as afwDisp
-import lsst.afw.geom as afwGeom
+import lsst.geom as afwGeom
 import lsst.afw.math as afwMath
 import scipy.ndimage as ndi
 hscdir = os.environ.get('HSC_DIR')

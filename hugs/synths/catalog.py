@@ -182,7 +182,7 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
     return cat
 
 
-def synthetic_sersics_scott(mu_range=[23, 28], mag_range=[17, 23], mu_nbins=10, mag_nbins=10,
+def synthetic_sersics_scott(mu_range=[23, 28], mag_range=[17, 23], delta_mu=10, delta_mag=10,
                       n_range=[0.3, 1.5], ell_range=[0., 0.65], 
                       theta_range=[0, 180], nsynths=100, random_state=None,  
                       master_band='g', mu_type="central", 
@@ -204,10 +204,10 @@ def synthetic_sersics_scott(mu_range=[23, 28], mag_range=[17, 23], mu_nbins=10, 
     b_n = gammaincinv(2.*sersic_n, 0.5)
     f_n = gamma(2*sersic_n)*sersic_n*np.exp(b_n)/b_n**(2*sersic_n)
 
-    mu_bins = np.linspace(mu_range[0], mu_range[1], mu_nbins)
+    mu_bins = np.arange(mu_range[0], mu_range[1], delta_mu)
     mu = rng.choice(mu_bins, size=size)
 
-    mag_bins = np.linspace(mag_range[0], mag_range[1], mag_nbins)
+    mag_bins = np.arange(mag_range[0], mag_range[1], delta_mag)
     mags = rng.choice(mag_bins, size=size)
     
     if mu_type=='central':
@@ -521,7 +521,7 @@ def generate_patch_cat(nsynths, image_shape, edge_buffer, sersic_params={},
 
 
 def generate_patch_cat_scott(nsynths, image_shape, edge_buffer, sersic_params={}, 
-                       random_state=None, min_pixel_sep=150, wcs=None):
+                        random_state=None, min_pixel_sep=150):
     """
     Scott assumed that mags and mu0 are on grids. Also ellipticity is zero, and 
     sersic index n=1. 

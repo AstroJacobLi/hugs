@@ -170,9 +170,7 @@ def run(cfg, reset_mask_planes=False):
         # bkg.globalrms for detection. This make sure that we detect
         # sources in low SNR regions (which occur a lot to DECaLS DR10).
         ############################################################
-        w = exp_clean.getWcs()
         img = exp_clean.getImage().getArray()
-        
         mask = exp_clean.getMask()
         if 'SMALL' in mask.getMaskPlaneDict().keys():
             mask.removeAndClearMaskPlane('SMALL')
@@ -207,15 +205,13 @@ def run(cfg, reset_mask_planes=False):
         if cfg.sep_steps is not None:
             sep_stepper = SepLsstStepper(config=cfg.sep_steps)
             sep_stepper.setup_image(exp_clean, cfg.psf_sigma[cfg.band_detect] * 2.354, cfg.rng) # TODO: check this
-
-            step_mask = cfg.exp.get_mask_array(band=cfg.band_detect,
-                planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
+            step_mask = utils.get_mask_array(exp_clean, planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
             sep_sources, _ = sep_stepper.run('sep_point_sources',
                                              mask=step_mask)
 
             cfg.logger.info('generating and applying sep ellipse mask')
             r_min = cfg.sep_min_radius  # in pixel
-            sep_sources = sep_sources[sep_sources['fwhm'] < r_min] # Johnny used "flux_radius" here
+            sep_sources = sep_sources[sep_sources[cfg.sep_radius_colname] < r_min] # Johnny used "flux_radius" here. But it can also be `fwhm`
             ell_msk = sep_ellipse_mask(
                 sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
             nimage_replace = utils.make_noise_image_jl(mi_clean, cfg.rng, back_size=32)[ell_msk]
@@ -343,7 +339,7 @@ def run(cfg, reset_mask_planes=False):
 
         results = Struct(all_detections=all_detections,
                          sources=sources,
-                         hugs_exp=cfg.exp,
+                         hugs_exp=cfg.exp_ori,
                          exp_clean=exp_clean,
                          exp_det=exp_det,
                          success=True,
