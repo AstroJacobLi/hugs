@@ -46,9 +46,10 @@ def get_dust_map():
 
     Notes 
     -----
-    sfdmap can be downloaded here http://github.com/kbarbary/sfdmap.
+    The original sfdmap (http://github.com/kbarbary/sfdmap) is no longer maintained.
+    Use stdmap2 at https://github.com/AmpelAstro/sfdmap2.
     """
-    import sfdmap
+    from sfdmap2 import sfdmap
     dustmap = sfdmap.SFDMap()
     return dustmap
 
@@ -606,3 +607,33 @@ def get_mask_array(mi, planes=['CLEANED', 'BRIGHT_OBJECT']):
         if p in mask.getMaskPlaneDict().keys():
             arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
     return arr
+
+
+def get_cutout(ra, dec, size, exp):
+    """
+    Generate a cutout of exposure. 
+     
+    Parameters
+    ----------
+    center : tuple
+        Center of desired cutout in the tract
+        and patch system.
+    size : float
+        Size to grow bbox in all directions.
+    exp : lsst.afw.image.ExposureF, optional
+        Exposure from which to get cutout.    
+    data_id : dict, optional
+        HSC data ID.
+    butler : lsst.daf.persistence.Butler, optional
+        the butler.
+
+    Returns
+    -------
+    cutout : lsst.afw.image.ExposureF
+        Desired exposure cutout.
+    """
+    import lsst.geom as geom
+    coord = geom.SpherePoint(geom.Angle(np.deg2rad(ra)), geom.Angle(np.deg2rad(dec)))
+    bbox = geom.Extent2I(size, size)
+    cutout = exp.getCutout(coord, bbox)
+    return cutout

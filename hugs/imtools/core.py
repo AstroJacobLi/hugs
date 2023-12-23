@@ -156,7 +156,7 @@ def smooth_image(masked_image, kernel='exp', **kwargs):
         return convolved_image
 
 
-def _ring(r_inner, r_outer, dtype=np.int, invert=False):
+def _ring(r_inner, r_outer, dtype=int, invert=False):
     """
     Generate a 2D ring footprint.
 
