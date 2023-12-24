@@ -117,6 +117,9 @@ def xmatch_re(cat_1, cat_2, xy_cols=['x_image', 'y_image'], max_sep=5):
     match_1 = idx[match_2]
     mismatch_2 = ~match_2
     mismatch_1 = idx[mismatch_2]
-    match_masks = (match_1, match_2)
+    match_masks = (match_1, match_2) # match_1 is the indices of objects in cat1, which are matched to objects in cat2
+    # match_2 is a flag for objects in cat2, which are matched to objects in cat1
+    # Therefore, two objects in cat2 can be matched to the same object in cat1. 
+    # It is good to remove duplicates in match_1. 
     mismatch_masks = (mismatch_1, mismatch_2)
     return match_masks, mismatch_masks 

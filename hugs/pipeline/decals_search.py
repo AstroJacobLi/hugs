@@ -14,7 +14,7 @@ from ..utils import pixscale, zpt
 from .. import utils
 from .. import imtools
 from .. import primitives as prim
-from ..cattools import xmatch, xmatch_re
+from ..cattools import xmatch, xmatch_re, find_duplicates
 from ..star_mask import scott_star_mask
 
 import copy
@@ -317,6 +317,12 @@ def run(cfg, reset_mask_planes=False):
                     results = _null_return(cfg, exp_clean)
                     return results
                 sources = sources[match_masks[0]]
+                
+                # Deal with duplicated sources
+                dup_inds = find_duplicates(sources.to_pandas())
+                if len(dup_inds) > 0:
+                    cfg.logger.info('remove duplicates')
+                    sources.remove_rows(dup_inds[:,1])
             else:
                 cfg.logger.warn(
                     '**** no sources detected in ' + band + ' ****')
