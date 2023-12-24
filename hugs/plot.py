@@ -10,6 +10,36 @@ def plot_sep_sources(image, catalog, ec='lime', scale_ell=6, subplots=None,
                      mark_centers=False, subplot_kw=dict(figsize=(10, 10)),
                      ell_type='ab', per_lo=1.0, per_hi=99.0, mask=None,
                      mask_kws=dict(cmap='Blues_r', alpha=0.5)):
+    """
+    Show sources from sep catalog, as returned by hugs.
+    
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Image array.
+    catalog : astropy.table.Table
+        The sep catalog.
+    ec : str
+        Color of ellipse edges.
+    scale_ell : float
+        Scaling factor for ellipse size.
+    subplots : tuple
+        Tuple of matplotlib.pyplot.subplots.
+    mark_centers : bool
+        Whether mark the centers of the sources.
+    subplot_kw : dict
+        Keyword arguments for matplotlib.pyplot.subplots.
+    ell_type : str
+        Type of ellipse to plot. Options are 'ab' or 'kron_rad'.
+    per_lo : float
+        Lower percentile for image scaling.
+    per_hi : float
+        Upper percentile for image scaling.
+    mask : numpy.ndarray
+        Mask array.
+    mask_kws : dict
+        Keyword arguments for mask imshow.
+    """
 
     fig, ax = subplots if subplots is not None else plt.subplots(**subplot_kw)
 
@@ -126,7 +156,28 @@ def plot_sex_sources(image, catalog, ec='lime', scale_ell=6, subplots=None,
     return fig, ax
 
 def show_step(img, ax, vmin, vmax, title, seg=None, alpha=0.6, cmap=plt.cm.gnuplot):
-
+    """
+    Show the detection step of `hugs`, similar to Fig 1 of Greco+2018 (https://ui.adsabs.harvard.edu/abs/2018ApJ...857..104G/abstract).
+    
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Image array.
+    ax : matplotlib.axes.Axes
+        Axes object.
+    vmin : float
+        Minimum value for imshow.
+    vmax : float
+        Maximum value for imshow.
+    title : str
+        Title for axes.
+    seg : numpy.ndarray
+        Segmentation map.
+    alpha : float
+        Alpha value for seg.
+    cmap : matplotlib.colors.Colormap
+        Colormap for seg.
+    """
     ax.imshow(img, cmap='gray_r', vmin=vmin, vmax=vmax, origin='lower')
 
     if seg is not None:
@@ -144,50 +195,40 @@ def show_step(img, ax, vmin, vmax, title, seg=None, alpha=0.6, cmap=plt.cm.gnupl
 # Below are from Scott's code. For completeness plot.
 ###############################################################################
 
-def plot_radii(ax, mags, mu0s, dmod, re_col='black'):
-    import matplotlib.patheffects as path_effects
-    mu0s, mags = np.meshgrid(mu0s, mags)
-    mues = mu0s + 1.822
-    mue_avgs = mues - 0.699
-
-    rads = np.sqrt(10**((mue_avgs-mags-dmod)/2.5)/2/np.pi)
-    CS = ax.contour(mu0s, mags, rads,
-                    levels=[4, 8, 12, 30],
-                    colors='LimeGreen', lw=4)
-    CS.levels = [int(val) for val in CS.levels]
-    fmt = r'${%r}$ "'
-    labels = ax.clabel(CS, CS.levels, inline=True,
-                       fmt=fmt,
-                       colors=re_col)
-    # for tt in labels:
-    #    tt.set_path_effects([path_effects.Stroke(linewidth=1, foreground='white'),
-    # path_effects.Normal()])
-
-
-def draw_lg_trends(ax, dmod):
-    """
-    Mass-size relation of Local Group???
-    """
-    dist = 10*10**(dmod/5)
-    mstars = np.logspace(4, 9)
-    mu_avge_v = (np.log10(mstars)-19.23)/-0.51
-    lg_r_e = 0.23*np.log10(mstars) - 1.93
-    r_e = (10**lg_r_e*1000)/dist * 206265
-
-    # mu_avge_v = mu_e_v# - 0.699
-    Mv = mu_avge_v - 2.5*np.log10(2*np.pi*r_e**2) - dmod
-    Mr = Mv - 0.4
-
-    mu0_v = (mu_avge_v+0.699) - 1.822
-    mu0_r = mu0_v - 0.4
-    ax.plot(mu0_r, Mr, '-', color='darkorchid', lw=3)
-
-
 def completeness_plot(sims, dmod, mag='m_g', mu='mu_0_g',
-                      xlabel=r'$\mu_0(g)\,[\mathrm{mag\;arcsec}^{-2}]$', ylabel=r'$M_g$', labelsize=19,
-                      xbins=10, ybins=10, re_col='LimeGreen'):
+                      xlabel=r'$\mu_0(g)\,[\mathrm{mag\;arcsec}^{-2}]$', 
+                      ylabel=r'$M_g$', labelsize=19, title=None, 
+                      xbins=10, ybins=10, re_col='LimeGreen', elves_mass_size=False):
     """
-    Completeness plot from Scott's paper
+    Plot the completeness of detection using simulated mock galaxies.
+    Similar to Fig 14 of Carlsten+22 (ELVES paper).
+    
+    Parameters
+    ----------
+    sims : astropy.table.Table
+        Catalog of mock galaxies. It must contain the columns `mag` and `mu`, and `match` (bool).
+    dmod : float
+        Distance modulus.
+    mag : str
+        Name of the magnitude column, used to calculate the absolute magnitude.
+    mu : str
+        Name of the surface brightness column.
+    xlabel : str
+        Label for x-axis.
+    ylabel : str
+        Label for y-axis.
+    labelsize : int
+        Label size.
+    title : str
+        Title for plot.
+    xbins : int
+        Number of bins in x-axis.
+    ybins : int
+        Number of bins in y-axis.
+    re_col : str
+        Color for radii contours. "LimeGreen" is the color used in Carlsten+22.
+    elves_mass_size : bool
+        Whether to plot the mass-size relation of ELVES satellites in Carlsten+21.
     """
     from matplotlib.ticker import (AutoMinorLocator)
 
@@ -270,7 +311,57 @@ def completeness_plot(sims, dmod, mag='m_g', mu='mu_0_g',
     axScatter.set_ylim([bins1[0], bins1[-1]])
     axScatter.set_xlim([bins2[0], bins2[-1]])
 
+    # plot constant radii contours
     plot_radii(axScatter, bins1, bins2, dmod, re_col=re_col)
-    # draw_lg_trends(axScatter, dmod)
+    
+    if title is not None:
+        axHistx.set_title(title, fontsize=20)
+        
+    if elves_mass_size:
+        draw_elves_mass_size(axScatter, dmod)
 
     return fig
+
+
+def plot_radii(ax, mags, mu0s, dmod, re_col='black'):
+    import matplotlib.patheffects as path_effects
+    mu0s, mags = np.meshgrid(mu0s, mags)
+    mues = mu0s + 1.822
+    mue_avgs = mues - 0.699
+
+    rads = np.sqrt(10**((mue_avgs-mags-dmod)/2.5)/2/np.pi)
+    CS = ax.contour(mu0s, mags, rads,
+                    levels=[4, 8, 12, 30],
+                    colors='LimeGreen', lw=4)
+    CS.levels = [int(val) for val in CS.levels]
+    fmt = r'${%r}$ "'
+    labels = ax.clabel(CS, CS.levels, inline=True,
+                       fmt=fmt,
+                       colors=re_col)
+    # for tt in labels:
+    #    tt.set_path_effects([path_effects.Stroke(linewidth=0.4, foreground='white'),
+    # path_effects.Normal()])
+
+
+def draw_elves_mass_size(ax, dmod):
+    """
+    Plot the mass-size relation of ELVES satellites in Carlsten+21.
+    
+    log(re/pc) = 0.25 log(M*) + 1.07
+    
+    """
+    dist = 10 * 10**(dmod / 5)
+    mstars = np.logspace(4, 9)
+    
+    mu_avge_v = (np.log10(mstars)-19.23)/-0.51
+    
+    lg_r_e = 0.25 * np.log10(mstars) + 1.07 - 3 # kpc
+    r_e = (10**lg_r_e*1000) / dist * 206265
+
+    # mu_avge_v = mu_e_v# - 0.699
+    Mv = mu_avge_v - 2.5*np.log10(2*np.pi*r_e**2) - dmod
+    Mr = Mv - 0.4
+
+    mu0_v = (mu_avge_v+0.699) - 1.822
+    mu0_r = mu0_v - 0.4
+    ax.plot(mu0_r, Mr, '-', color='darkorchid', lw=3)
