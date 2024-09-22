@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
-import lsst.daf.persistence
+import lsst.daf.butler
 import lsst.afw.image as afwImage
 import lsst.afw.display as afwDisp
 import lsst.geom as afwGeom
@@ -50,7 +50,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
         Exposure from which to get cutout.    
     data_id : dict, optional
         HSC data ID.
-    butler : lsst.daf.persistence.Butler, optional
+    butler : lsst.daf.butler.Butler, optional
         the butler.
 
     Returns
@@ -62,7 +62,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
     # get exposure
     if exp is None:
         if butler is None:
-            butler = lsst.daf.persistence.Butler(hscdir)
+            butler = lsst.daf.butler.Butler(hscdir)
         exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
 
     # generate bbox and get cutout

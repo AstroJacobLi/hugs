@@ -13,6 +13,11 @@ zpt: 22.5
 
 min_good_data_frac: 0.5
 
+bright_star:
+    bright_star_thresh: 13
+    p1: 0.8
+    p2: 0.8
+
 band_detect: 'r'
 
 band_mask: 'r'
@@ -45,6 +50,7 @@ clean:
 
 hsc_small_sources_r_max: 6 #2.0
 lsb_smooth_factor: 1.75 # lsb_smooth_factor * psf_sigma
+max_smooth_sigma: 3.0
 
 sep_steps:
     extract_pixstack: 600000

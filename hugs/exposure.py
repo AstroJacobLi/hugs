@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
-import lsst.daf.persistence
+import lsst.daf.butler
 from lsst.pipe.base import Struct
 from astropy.table import Table
 from .stats import get_clipped_sig_task
@@ -25,7 +25,7 @@ class HugsExposure(object):
         HSC patch
     bands : str, optional
         Photometric bands 
-    butler : lsst.daf.persistence.Butler
+    butler : lsst.daf.butler.Butler
         HSC data butler
     """
 
@@ -82,7 +82,7 @@ class HugsExposure(object):
         Let's only load the butler once.
         """
         if self._butler is None:
-            self._butler = lsst.daf.persistence.Butler(self.rerun)
+            self._butler = lsst.daf.butler.Butler(self.rerun)
         return self._butler
 
     def get_mask_array(self, band='i', planes=['CLEANED', 'BRIGHT_OBJECT']):
@@ -169,7 +169,7 @@ class DecalsExposure(object):
 
     def __init__(self, brick, bands='gr', 
                  data_dir='/scratch/gpfs/jiaxuanl/Data/SALAD/decals/ngc5055/tracts/',
-                 band_detect='g'):
+                 band_detect='g', datatype='image'):
         self.brick = brick
         self.bands = bands
         self.synths = None
@@ -177,16 +177,16 @@ class DecalsExposure(object):
         self.stat = {}
 
         for band in bands:
-            fn = os.path.join(data_dir, f'legacysurvey-{self.brick}-image-{band}.fits') # filename
+            fn = os.path.join(data_dir, f'legacysurvey-{self.brick}-{datatype}-{band}.fits') # filename
             exp = afwImage.ExposureF(fn)
-            exp.setFilterLabel(afwImage.FilterLabel(band))
+            exp.setFilter(afwImage.FilterLabel(band))
             exp.getMask().addMaskPlane('BRIGHT_OBJECT')
             self.fn[band] = fn
             stat_task = get_clipped_sig_task()
             self.stat[band] = stat_task.run(exp.getMaskedImage())
             setattr(self, band.lower(), exp)
 
-        self.x0, self.y0 = self.g.getXY0()
+        self.x0, self.y0 = self[bands[0]].getXY0()
         self.patch_meta = Struct(
             x0 = float(self.x0),
             y0 = float(self.y0),

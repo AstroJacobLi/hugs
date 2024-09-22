@@ -57,9 +57,19 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         # Generate star mask
         ############################################################
+        # Just to get a copy of the original exposure
+        cfg.exp_ori = copy.deepcopy(cfg.exp)
+        
         cfg.logger.info('generating star mask')
         star_mask = scott_star_mask(exposure=cfg.exp[cfg.band_detect], 
-                                    p1=0.8, p2=0.8, bright_thresh=13)
+                                    p1=cfg.bright_star['p1'], p2=cfg.bright_star['p2'], 
+                                    bright_thresh=cfg.bright_star['bright_star_thresh'])
+        # combine star mask with no-data mask
+        no_data_mask = ((cfg.exp_ori[cfg.bands[0]].image.array == 0) | (cfg.exp_ori[cfg.bands[1]].image.array == 0)).astype(int) * 2
+        if hasattr(cfg, 'exp_invvar'):
+            no_data_mask += ((cfg.exp_invvar[cfg.bands[0]].image.array == 0) | (cfg.exp_invvar[cfg.bands[1]].image.array == 0)).astype(int) * 2
+        star_mask = (star_mask.astype(int) + no_data_mask).astype(bool)
+        
         mi = cfg.exp[cfg.band_detect].getMaskedImage()
         mask = mi.getMask()
         # Set star mask to the MASK
@@ -105,11 +115,11 @@ def run(cfg, reset_mask_planes=False):
         # Check data quality in both bands. If the r-band is deeper,
         # we increase the smoothing scale.
         ############################################################
-        depth_ratio = stat_task.run(cfg.exp['g'].getMaskedImage()).stdev / stat_task.run(cfg.exp['r'].getMaskedImage()).stdev
-        cfg.logger.info(f'depth ratio r / g = {depth_ratio:.3f}')
+        depth_ratio = stat_task.run(cfg.exp[cfg.band_meas[0]].getMaskedImage()).stdev / stat_task.run(cfg.exp[cfg.band_meas[1]].getMaskedImage()).stdev
+        cfg.logger.info(f'depth ratio {cfg.band_meas[1]} / {cfg.band_meas[0]} = {depth_ratio:.3f}')
         if depth_ratio > 1: # when r-band is deeper
-            cfg.psf_sigma['r'] *= 1.5
-            cfg.psf_sigma['g'] *= 1.5
+            cfg.psf_sigma[cfg.band_meas[0]] *= 1.5
+            cfg.psf_sigma[cfg.band_meas[1]] *= 1.5
 
         ############################################################
         # Image thesholding at low and high thresholds. In both
@@ -170,22 +180,32 @@ def run(cfg, reset_mask_planes=False):
         # bkg.globalrms for detection. This make sure that we detect
         # sources in low SNR regions (which occur a lot to DECaLS DR10).
         ############################################################
+        ### Whether the host is in this brick ###
         img = exp_clean.getImage().getArray()
         mask = exp_clean.getMask()
         if 'SMALL' in mask.getMaskPlaneDict().keys():
             mask.removeAndClearMaskPlane('SMALL')
         mask_detect = afwImage.ImageF(exp_clean.getDimensions())
-        
         # Round 1
+        sep.set_sub_object_limit(10000)
         back = sep.Background(img, bw=64, bh=64)
         cat, segmap1 = sep.extract(img - back.back(), 3.5, err=back.rms(), minarea=10, 
                                 deblend_nthresh=32, deblend_cont=0.001, 
                                 segmentation_map=True)
         # Round 2
-        back = sep.Background(img, bw=1200, bh=1200)
-        cat, segmap2 = sep.extract(img - back.back(), 3., err=back.globalrms, minarea=5, 
-                                deblend_nthresh=32, deblend_cont=0.001, filter_kernel=None,
-                                segmentation_map=True)
+        cfg.test_img = img
+        if cfg.host_in_brick:
+            back = sep.Background(img, bw=120, bh=120)
+            cat, segmap2 = sep.extract(img - back.back(), 4., err=back.rms(), minarea=5, 
+                                    deblend_nthresh=32, deblend_cont=0., filter_kernel=None,
+                                    segmentation_map=True)
+        else:
+            back = sep.Background(img, bw=1200, bh=1200)
+            cat, segmap2 = sep.extract(img - back.back(), 3., err=back.globalrms, minarea=5, 
+                                    deblend_nthresh=32, deblend_cont=0.001, filter_kernel=None,
+                                    segmentation_map=True)
+        cfg.logger.info(f'number of sources detected in round 2: {len(cat)}')
+        
         # Combine
         mask_detect.array[:] = segmap1 + segmap2
         footprint_set = afwDet.FootprintSet(mask_detect, afwDet.Threshold(0.01))
@@ -222,8 +242,6 @@ def run(cfg, reset_mask_planes=False):
                 ell_msk] += mask_clean.getPlaneBitMask('SMALL')
 
         cfg.exp_clean = exp_clean
-        # keep the original exposure before cleaning
-        cfg.exp_ori = copy.deepcopy(cfg.exp)
         
         ############################################################
         # Clean images in both bands according to the mask we just
@@ -255,9 +273,20 @@ def run(cfg, reset_mask_planes=False):
                 extra_smooth = np.sqrt(depth_ratio)
             else:
                 extra_smooth = 1
+            # if lsb_smooth_factor is a dictionary, use the value for the band
+            # if isinstance(cfg.lsb_smooth_factor, dict):
+            #     extra_smooth = cfg.lsb_smooth_factor[band]
+            # else:
+            #     extra_smooth = cfg.lsb_smooth_factor
+            smooth_sigma = cfg.psf_sigma[band] * extra_smooth * cfg.lsb_smooth_factor
+            if cfg.lsb_smooth_scale is not None:
+                smooth_sigma = np.sqrt(cfg.lsb_smooth_scale**2 - cfg.psf_sigma[band]**2) if cfg.lsb_smooth_factor > cfg.psf_sigma[band] else cfg.psf_sigma[band]
+            # smooth_sigma = cfg.max_smooth_sigma
+            # smooth_sigma = np.min([smooth_sigma, cfg.max_smooth_sigma])
+            cfg.logger.info(f'overall smoothing sigma in {band}-band = {smooth_sigma:.2f}')
             mi = imtools.smooth_gauss(mi, 
-                                      sigma=cfg.lsb_smooth_factor * cfg.psf_sigma[band] * extra_smooth,
-                                      use_scipy=True, 
+                                      sigma=smooth_sigma,
+                                      use_scipy=True,
                                       inplace=False)
             exp_det[band].setMaskedImage(mi)
         cfg.exp_det = exp_det
@@ -283,7 +312,8 @@ def run(cfg, reset_mask_planes=False):
                 cfg.logger.warn('**** no sources found by sextractor ****')
                 results = _null_return(cfg, exp_clean)
                 return results
-
+        cfg.sources = sources
+        
         ############################################################
         # Verify detections in other bands in non-cleaned images using SExtractor
         ############################################################
@@ -293,12 +323,14 @@ def run(cfg, reset_mask_planes=False):
         for band in cfg.band_verify:
             cfg.logger.info('verifying dection in {}-band'.format(band))
             if band == 'g':
-                cfg.sex_config['DETECT_THRESH'] = cfg.sex_config['DETECT_THRESH'] - 0.25
+                cfg.sex_config['DETECT_THRESH'] = cfg.sex_config['DETECT_THRESH'] - 0.35
+            print(band, cfg.sex_config)
             sources_verify = prim.detect_sources(
                 cfg.exp_det[band],
                 cfg.sex_config, cfg.sex_io_dir,
                 label=label, delete_created_files=cfg.delete_created_files,
                 original_fn=cfg.exp.fn[band])
+            cfg.source_verify = sources_verify
             if len(sources_verify) > 0:
                 cfg.logger.info(f'total sources in {band}-band = {len(sources_verify)}')
                 # match_masks, _ = xmatch(

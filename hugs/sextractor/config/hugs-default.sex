@@ -77,7 +77,7 @@ BACK_TYPE        AUTO           # AUTO or MANUAL
 BACK_VALUE       0.0            # Default background value in MANUAL mode
 BACK_SIZE        64             # Background mesh: <size> or <width>,<height>
 BACK_FILTERSIZE  3              # Background filter: <size> or <width>,<height>
- 
+
 BACKPHOTO_TYPE   GLOBAL         # can be GLOBAL or LOCAL
 BACKPHOTO_THICK  24             # thickness of the background LOCAL annulus
 BACK_FILTTHRESH  0.0            # Threshold above which the background-

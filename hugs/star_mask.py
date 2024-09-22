@@ -151,7 +151,7 @@ def scott_star_mask(exposure, p1, p2, bright_thresh, tigress=True):
     p1, p2 : float
         Parameters for the relation between the segmap size and g-band magnitude.
         The relation is given by `logarea = p1 * gmag + p2`.
-        Smaller `p1` means larger mask size, and larger p2 means larger mask size.
+        Smaller `p2` means larger mask size, and larger `p2` means larger mask size.
         Changing `p1` will change the mask size contrast between bright and faint stars. 
     bright_thresh : float
         Bright star threshold in GAIA g-band, used to determine the mask size for bright stars.

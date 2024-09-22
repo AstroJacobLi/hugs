@@ -13,13 +13,23 @@ from .synths.catalog import GlobalSynthCat, generate_patch_cat
 from .log import HugsLogger
 logging.setLoggerClass(HugsLogger)
 
+# def update_nested_dict(d, u):
+#     for k, v in u.items():
+#         if isinstance(v, dict):
+#             d[k] = update_nested_dict(d.get(k, {}), v)
+#         else:
+#             d[k] = v
+#     return d
+
 def update_nested_dict(d, u):
+    d_copy = d.copy()
     for k, v in u.items():
         if isinstance(v, dict):
-            d[k] = update_nested_dict(d.get(k, {}), v)
+            d_copy[k] = update_nested_dict(d_copy.get(k, {}), v)
         else:
-            d[k] = v
-    return d
+            d_copy[k] = v
+    return d_copy
+
 
 class PipeConfig(object):
     """
@@ -67,6 +77,8 @@ class PipeConfig(object):
         self.hugs_io = params['hugs_io']
         self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
+        self.bright_star = params['bright_star']
+        # self.bright_star = star_setup['bright_star_thresh']
         self.inject_synths = params['inject_synths']
         self.coadd_label = params.pop('coadd_label', 'deepCoadd_calexp')
         self.use_andy_mask = params.pop('use_andy_mask', True)
@@ -102,7 +114,7 @@ class PipeConfig(object):
         self.hsc_small_sources_r_max = params.pop(
             'hsc_small_sources_r_max', None)
         self.lsb_smooth_factor = params.pop('lsb_smooth_factor', 1.75)
-
+        self.lsb_smooth_scale = params.pop('lsb_smooth_scale', None)
         # setup for sextractor
         sex_setup = params['sextractor']
         self.sex_config = sex_setup['config']
@@ -165,10 +177,13 @@ class PipeConfig(object):
 
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
-            utils.remove_mask_planes(mask, ['SMALL',
-                                            'CLEANED',
-                                            'THRESH_HIGH',
-                                            'THRESH_LOW'])
+            try:
+                utils.remove_mask_planes(mask, ['SMALL',
+                                                'CLEANED',
+                                                'THRESH_HIGH',
+                                                'THRESH_LOW'])
+            except Exception as e:
+                self.logger.warning(e)
 
     def set_brick_id(self, brick):
         """
@@ -210,7 +225,19 @@ class PipeConfig(object):
         else:
             self.exp = DecalsExposure(brick, self.bands, 
                                       data_dir=os.path.join(self.data_dir, self.rerun_path),
-                                      band_detect=self.band_detect)
+                                      band_detect=self.band_detect, datatype='image')
+            try:
+                # if file exist
+                rerun_path = "/".join(self.rerun_path.split('/')[:2]) + '/tracts/'
+                invvar_file = os.path.join(self.data_dir, rerun_path, f'legacysurvey-{brick}-invvar-{self.band_detect}.fits')
+                if os.path.exists(invvar_file):
+                    self.exp_invvar = DecalsExposure(brick, self.bands, 
+                                            data_dir=os.path.join(self.data_dir, rerun_path),
+                                            band_detect=self.band_detect, datatype='invvar')
+                else:
+                    self.logger.warning('no invvar file found...')
+            except FileNotFoundError:
+                self.logger.warning('no invvar file found...')
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:

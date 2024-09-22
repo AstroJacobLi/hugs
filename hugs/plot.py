@@ -247,26 +247,28 @@ def completeness_plot(sims, dmod, mag='m_g', mu='mu_0_g',
     axHistx = plt.axes(rect_histx)
     axHisty = plt.axes(rect_histy)
 
-    bins1 = np.unique(sims[mag])
-    bins2 = np.unique(sims[mu])
-    bins1 = np.linspace(bins1[0]-0.5*(bins1[1]-bins1[0]),
-                        bins1[-1]+0.5*(bins1[1]-bins1[0]),
-                        len(bins1)+1)
-    bins2 = np.linspace(bins2[0]-0.5*(bins2[1]-bins2[0]),
-                        bins2[-1]+0.5*(bins2[1]-bins2[0]),
-                        len(bins2)+1)
+    # bins1 = np.unique(sims[mag])
+    # bins2 = np.unique(sims[mu])
+    # bins1 = np.linspace(bins1[0]-0.5*(bins1[1]-bins1[0]),
+    #                     bins1[-1]+0.5*(bins1[1]-bins1[0]),
+    #                     len(bins1)+1)
+    # bins2 = np.linspace(bins2[0]-0.5*(bins2[1]-bins2[0]),
+    #                     bins2[-1]+0.5*(bins2[1]-bins2[0]),
+    #                     len(bins2)+1)
     # print(bins1, bins2)
-    # range1 = [np.min(sims[mag]), np.max(sims[mag])]
-    # range2 = [np.min(sims[mu]), np.max(sims[mu])]
-    # bins1 = np.linspace(*range1, xbins)
-    # bins2 = np.linspace(*range2, ybins)
-    # print(bins1, bins2)
+    range1 = [np.min(sims[mag]), np.max(sims[mag])]
+    range1 = [-12.6, -8.0]
+    range2 = [np.min(sims[mu]), np.max(sims[mu])]
+    range2 = [23.5, 28]
+    bins1 = np.linspace(*range1, xbins)
+    bins2 = np.linspace(*range2, ybins)
+    print(bins1, bins2)
 
     detected = sims[sims['match'] > 0]
     dets, b1, b2 = np.histogram2d(detected[mag], detected[mu], [bins1, bins2])
     tot, b1, b2 = np.histogram2d(sims[mag], sims[mu], [bins1, bins2])
     img = dets/tot
-    img[np.isnan(img)] = 0
+    # img[np.isnan(img)] = 0
     img = axScatter.imshow(img, origin='lower',
                            extent=[bins2[0], bins2[-1], bins1[0], bins1[-1]],
                            cmap='magma', vmin=0, vmax=1)

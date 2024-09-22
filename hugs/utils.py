@@ -12,62 +12,63 @@ from astropy.io import fits
 from collections import namedtuple
 
 project_dir = os.path.dirname(os.path.dirname(__file__))
-default_config_fn = os.path.join(
-    project_dir, 'pipe-configs/default_config.yml')
-andy_mask_path = '/tigress/HSC/HSC/rerun/goulding/S18A_STARMASK/IMAGE_MASKS'
+default_config_fn = os.path.join(project_dir, "pipe-configs/default_config.yml")
+andy_mask_path = "/tigress/HSC/HSC/rerun/goulding/S18A_STARMASK/IMAGE_MASKS"
 
 pixscale = 0.262
 zpt = 22.5
 
-#Extinction correction factor for HSC
-#A_lambda = Coeff * E(B-V)
-ExtCoeff = namedtuple('ExtCoeff', 'g r i z y')
+# Extinction correction factor for HSC
+# A_lambda = Coeff * E(B-V)
+ExtCoeff = namedtuple("ExtCoeff", "g r i z y")
 ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
 
 
 # Patch metadata
 PatchMeta = namedtuple(
-    'PatchMeta', 'x0 y0 cleaned_frac small_frac bright_obj_frac good_data_frac')
+    "PatchMeta", "x0 y0 cleaned_frac small_frac bright_obj_frac good_data_frac"
+)
 
 
 def read_config(fn=default_config_fn):
     """
     Parse hugs pipeline configuration file.
     """
-    with open(fn, 'r') as f:
+    with open(fn, "r") as f:
         config_params = yaml.load(f, Loader=yaml.FullLoader)
     return config_params
 
 
 def get_dust_map():
     """
-    Use sdfmap to get E(B-V) values from the Schlegel, Finkbeiner & Davis 
+    Use sdfmap to get E(B-V) values from the Schlegel, Finkbeiner & Davis
     (1998) dust map.
 
-    Notes 
+    Notes
     -----
     The original sfdmap (http://github.com/kbarbary/sfdmap) is no longer maintained.
     Use stdmap2 at https://github.com/AmpelAstro/sfdmap2.
     """
     from sfdmap2 import sfdmap
+
     dustmap = sfdmap.SFDMap()
     return dustmap
 
 
 def annuli(row_c, col_c, r_in, r_out, shape):
     """
-    Find the indices within an annulus embedded in 
-    an array of the specified shape. 
+    Find the indices within an annulus embedded in
+    an array of the specified shape.
 
     Parameters
     ----------
     row_c, col_c : float
         Central coordinates of the annulus.
     r_in : float
-        Inner radius of annulus. If r_in=0, the 
-        annulus becomes a circle. 
+        Inner radius of annulus. If r_in=0, the
+        annulus becomes a circle.
     r_out : float
-        Outer radius of annulus. 
+        Outer radius of annulus.
     shape : tuple
         Shape of the host array.
 
@@ -87,8 +88,8 @@ def annuli(row_c, col_c, r_in, r_out, shape):
 
     # generate the coords within annulus in bbox
     ctr_shift = center - ul
-    bb_row, bb_col = np.ogrid[0:float(bb_shape[0]), 0:float(bb_shape[1])]
-    radius = np.sqrt((bb_row-ctr_shift[0])**2 + (bb_col-ctr_shift[1])**2)
+    bb_row, bb_col = np.ogrid[0 : float(bb_shape[0]), 0 : float(bb_shape[1])]
+    radius = np.sqrt((bb_row - ctr_shift[0]) ** 2 + (bb_col - ctr_shift[1]) ** 2)
     row_idx, col_idx = np.nonzero((radius >= r_in) & (radius < r_out))
 
     # shift back to original coords
@@ -108,36 +109,37 @@ def embed_slices(center, arr_shape, img_shape):
     ----------
     center : ndarray
         Center of array in the image coordinates.
-    arr_shape : tuple 
+    arr_shape : tuple
         Shape of the array to embed (dimensions must be odd).
     img_shape : tuple
-        Shape of the main image array.  
+        Shape of the main image array.
 
     Returns
     -------
     img_slice, arr_slice : tuples of slices
-        Slicing indices. To embed array in image, 
+        Slicing indices. To embed array in image,
         use the following:
         img[img_slice] = arr[arr_slice]
     """
     arr_shape = np.asarray(arr_shape)
     img_shape = np.asarray(img_shape)
 
-    assert np.alltrue(arr_shape%2 != np.array([0,0]))
+    assert np.alltrue(arr_shape % 2 != np.array([0, 0]))
 
-    imin = center - arr_shape//2
-    imax = center + arr_shape//2 
+    imin = center - arr_shape // 2
+    imax = center + arr_shape // 2
 
-    amin = (imin < np.array([0,0]))*(-imin)
-    amax = arr_shape*(imax<=img_shape-1) +\
-           (arr_shape-(imax-(img_shape-1)))*(imax>img_shape-1)
+    amin = (imin < np.array([0, 0])) * (-imin)
+    amax = arr_shape * (imax <= img_shape - 1) + (
+        arr_shape - (imax - (img_shape - 1))
+    ) * (imax > img_shape - 1)
 
     imin = np.maximum(imin, np.array([0, 0]))
-    imax = np.minimum(imax, np.array(img_shape)-1)
+    imax = np.minimum(imax, np.array(img_shape) - 1)
     imax += 1
 
-    img_slice = np.s_[imin[0]:imax[0], imin[1]:imax[1]]
-    arr_slice = np.s_[amin[0]:amax[0], amin[1]:amax[1]]
+    img_slice = np.s_[imin[0] : imax[0], imin[1] : imax[1]]
+    arr_slice = np.s_[amin[0] : amax[0], amin[1] : amax[1]]
 
     return img_slice, arr_slice
 
@@ -149,7 +151,7 @@ def get_psf_sigma(exposure):
     Parameters
     ----------
     exposure : lsst.afw.image.ExposureF
-        Exposure object. 
+        Exposure object.
 
     Returns
     -------
@@ -162,41 +164,42 @@ def get_psf_sigma(exposure):
     return sigma
 
 
-def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
+def get_exposure(data_id, butler=None, datadir=os.environ.get("HSC_DIR")):
     """
-    Return HSC exposure. 
+    Return HSC exposure.
 
     Parameters
     ----------
     data_id : str, lsst.afw.image.ExposureF, or dict
-        Exposure info. Can be file name, an exposure object, 
+        Exposure info. Can be file name, an exposure object,
         or dict of HSC data ID.
-    butler : lsst.daf.persistence.Butler
+    butler : lsst.daf.butler.Butler
         The Butler.
     datadir : str, optional
         Location of exposure data.
 
     Returns
     -------
-    exp : lsst.afw.image.ExposureF  
+    exp : lsst.afw.image.ExposureF
         HSC exposure for given data ID.
     """
-    if type(data_id)==str:
+    if type(data_id) == str:
         exp = afwImage.ExposureF(data_id)
-    elif type(data_id)==afwImage.ExposureF:
+    elif type(data_id) == afwImage.ExposureF:
         exp = data_id
-    elif type(data_id)==dict:
-        for key in ['tract', 'patch', 'filter']:
+    elif type(data_id) == dict:
+        for key in ["tract", "patch", "filter"]:
             assert key in data_id.keys()
         if butler is None:
-            import lsst.daf.persistence.Butler
-            butler = lsst.daf.persistence.Butler(datadir)
-        exp = butler.get('deepCoadd_calexp_hsc', data_id, immediate=True)
+            import lsst.daf.butler.Butler
+
+            butler = lsst.daf.butler.Butler(datadir)
+        exp = butler.get("deepCoadd_calexp_hsc", data_id, immediate=True)
     return exp
 
 
 def mkdir_if_needed(directory):
-    """"
+    """ "
     Create directory if it does not exist.
     """
     if not os.path.isdir(directory):
@@ -208,6 +211,7 @@ def get_time_label():
     Return time label for new files & directories.
     """
     import time
+
     label = time.strftime("%Y%m%d-%H%M%S")
     return label
 
@@ -219,7 +223,7 @@ def remove_mask_planes(mask, planes):
     Parameters
     ----------
     mask : lsst.afw.image.MaskU
-	Bit mask.
+        Bit mask.
     planes : list
         Planes to clear
     """
@@ -259,17 +263,19 @@ def check_random_state(seed):
         return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
-    if type(seed)==list:
-        if type(seed[0])==int:
+    if type(seed) == list:
+        if type(seed[0]) == int:
             return np.random.RandomState(seed)
 
-    raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
-                     ' instance'.format(seed))
+    raise ValueError(
+        "{0!r} cannot be used to seed a numpy.random.RandomState"
+        " instance".format(seed)
+    )
 
 
-def calc_mask_bit_fracs(exp, planes=['SMALL', 'CLEANED', 'BRIGHT_OBJECT']):
+def calc_mask_bit_fracs(exp, planes=["SMALL", "CLEANED", "BRIGHT_OBJECT"]):
     """
-    Calculate the fraction of image flagged as 'cleaned' and 'bright_object'. 
+    Calculate the fraction of image flagged as 'cleaned' and 'bright_object'.
 
     Parameters
     ----------
@@ -288,7 +294,7 @@ def calc_mask_bit_fracs(exp, planes=['SMALL', 'CLEANED', 'BRIGHT_OBJECT']):
     for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             npix_p = (msk_arr & getBitVal(p) != 0).sum()
-            fracs.update({p.lower()+'_frac': npix_p/npix})
+            fracs.update({p.lower() + "_frac": npix_p / npix})
     return fracs
 
 
@@ -296,7 +302,7 @@ def check_astropy_to_pandas(cat):
     """
     Change astropy table to pandas dataframe if necessary.
     """
-    if type(cat)==Table:
+    if type(cat) == Table:
         cat = cat.to_pandas()
     return cat
 
@@ -326,39 +332,43 @@ def check_kwargs_defaults(kwargs, defaults):
 def make_noise_image(masked_image, random_state=None):
     """
     Generate Gaussian noise image with zero mean and std equal to the rms level
-    of the background in the given image. 
+    of the background in the given image.
 
     Parameters
     ----------
     masked_image : lsst.afw.image.MaskedImageF
-        Masked image for calculating noise image shape and the scale of the 
+        Masked image for calculating noise image shape and the scale of the
         noise fluctuations.
-    random_state : 
+    random_state :
         Input for check_random_state above.
 
-    Returns 
+    Returns
     -------
     noise_array : ndarray
-        The noise image. 
+        The noise image.
     """
     from .stats import get_clipped_sig_task
+
     rng = check_random_state(random_state)
-    bad_mask_planes = ('EDGE', 'BRIGHT_OBJECT', 'DETECTED', 'SAT')
+    bad_mask_planes = ("EDGE", "BRIGHT_OBJECT", "DETECTED", "SAT")
     task = get_clipped_sig_task(bad_mask_planes=bad_mask_planes)
     stats = task.run(masked_image)
     back_rms = stats.stdev
     dims = masked_image.getDimensions()
-    noise_array = back_rms*rng.randn(dims[1], dims[0])
+    noise_array = back_rms * rng.randn(dims[1], dims[0])
     return noise_array
 
-def make_noise_image_jl(masked_image, random_state=None, mask=None, back_size=128, back_filtersize=5):
+
+def make_noise_image_jl(
+    masked_image, random_state=None, mask=None, back_size=128, back_filtersize=5
+):
     """
     Generate Gaussian noise image according to the background and rms level of the input iamge.
-    
+
     Parameters
     ----------
     masked_image : lsst.afw.image.MaskedImageF
-        Masked image for calculating noise image shape and the scale of the 
+        Masked image for calculating noise image shape and the scale of the
         noise fluctuations.
     mask: numpy array
         Mask array. If not given, use the mask in masked_image.
@@ -366,21 +376,26 @@ def make_noise_image_jl(masked_image, random_state=None, mask=None, back_size=12
         Size of the background mesh.
     back_filtersize : int, optional
         Size of the background mesh filter.
-    random_state : 
+    random_state :
         Input for check_random_state above.
 
-    Returns 
+    Returns
     -------
     noise_array : ndarray
-        The noise image. 
+        The noise image.
     """
     rng = check_random_state(random_state)
-    mask = get_mask_array(masked_image, planes=['BRIGHT_OBJECT']) if mask is None else mask
-    bkg, rms = sky_bkg_rms(masked_image.getImage().getArray(), 
-                           mask=mask,
-                           back_size=back_size, 
-                           back_filtersize=back_filtersize)
+    mask = (
+        get_mask_array(masked_image, planes=["BRIGHT_OBJECT"]) if mask is None else mask
+    )
+    bkg, rms = sky_bkg_rms(
+        masked_image.getImage().getArray(),
+        mask=mask,
+        back_size=back_size,
+        back_filtersize=back_filtersize,
+    )
     return rng.normal(bkg, np.abs(rms))
+
 
 def solid_angle(ra_lim, dec_lim):
     """
@@ -401,11 +416,11 @@ def solid_angle(ra_lim, dec_lim):
     ra_lim = np.deg2rad(np.asarray(ra_lim))
     dec_lim = np.deg2rad(np.asarray(dec_lim))
     dsin_dec = np.sin(dec_lim[1]) - np.sin(dec_lim[0])
-    area = ra_lim.ptp() * dsin_dec * (180.0/np.pi)**2
+    area = ra_lim.ptp() * dsin_dec * (180.0 / np.pi) ** 2
     return area
 
 
-def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
+def angsep(ra1, dec1, ra2, dec2, sepunits="arcsec"):
     """
     Return angular separation btwn points
 
@@ -437,12 +452,12 @@ def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
     https://en.wikipedia.org/wiki/Great-circle_distance.
     """
 
-    deg2rad = np.pi/180.0
+    deg2rad = np.pi / 180.0
 
-    ra1 = ra1*deg2rad
-    dec1 = dec1*deg2rad
-    ra2 = ra2*deg2rad
-    dec2 = dec2*deg2rad
+    ra1 = ra1 * deg2rad
+    dec1 = dec1 * deg2rad
+    ra2 = ra2 * deg2rad
+    dec2 = dec2 * deg2rad
 
     sin_dRA = np.sin(ra2 - ra1)
     cos_dRA = np.cos(ra2 - ra1)
@@ -451,15 +466,17 @@ def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
     cos_dec1 = np.cos(dec1)
     cos_dec2 = np.cos(dec2)
 
-    num1 = cos_dec2*sin_dRA
-    num2 = cos_dec1*sin_dec2 - sin_dec1*cos_dec2*cos_dRA
-    denom = sin_dec1*sin_dec2 + cos_dec1*cos_dec2*cos_dRA
-    sep = np.arctan2(np.sqrt(num1*num1 + num2*num2), denom)
+    num1 = cos_dec2 * sin_dRA
+    num2 = cos_dec1 * sin_dec2 - sin_dec1 * cos_dec2 * cos_dRA
+    denom = sin_dec1 * sin_dec2 + cos_dec1 * cos_dec2 * cos_dRA
+    sep = np.arctan2(np.sqrt(num1 * num1 + num2 * num2), denom)
 
-    conversion = {'radian':1.0, 
-                  'arcsec':206264.806, 
-                  'arcmin':206264.806/60.0, 
-                  'degree':180./np.pi}
+    conversion = {
+        "radian": 1.0,
+        "arcsec": 206264.806,
+        "arcmin": 206264.806 / 60.0,
+        "degree": 180.0 / np.pi,
+    }
 
     sep *= conversion[sepunits]
 
@@ -470,14 +487,15 @@ def fetch_andy_mask(tract, patch, band):
     """
     Get Andy's new bright object mask.
     """
-    path = os.path.join(andy_mask_path, 'HSC-' + band.upper())
-    fn = os.path.join(path, '{}/{}/mask.fits'.format(tract, patch))
+    path = os.path.join(andy_mask_path, "HSC-" + band.upper())
+    fn = os.path.join(path, "{}/{}/mask.fits".format(tract, patch))
     mask = fits.getdata(fn)
     return mask
 
 
 # the following functinos were modified from astroML
 # https://github.com/astroML/astroML
+
 
 def ra_dec_to_xyz(ra, dec):
     """
@@ -490,13 +508,13 @@ def ra_dec_to_xyz(ra, dec):
     -------
     x, y, z : ndarrays
     """
-    sin_ra = np.sin(ra*np.pi/180.)
-    cos_ra = np.cos(ra*np.pi/180.)
+    sin_ra = np.sin(ra * np.pi / 180.0)
+    cos_ra = np.cos(ra * np.pi / 180.0)
 
-    sin_dec = np.sin(np.pi/2-dec*np.pi/180.)
-    cos_dec = np.cos(np.pi/2-dec*np.pi/180.)
+    sin_dec = np.sin(np.pi / 2 - dec * np.pi / 180.0)
+    cos_dec = np.cos(np.pi / 2 - dec * np.pi / 180.0)
 
-    return (cos_ra*sin_dec, sin_ra*sin_dec, cos_dec)
+    return (cos_ra * sin_dec, sin_ra * sin_dec, cos_dec)
 
 
 def angular_dist_to_euclidean_dist(theta, r=1):
@@ -513,7 +531,7 @@ def angular_dist_to_euclidean_dist(theta, r=1):
     d : float or ndarray
         Euclidean distance
     """
-    d = 2*r*np.sin(0.5*theta*np.pi/180.)
+    d = 2 * r * np.sin(0.5 * theta * np.pi / 180.0)
     return d
 
 
@@ -531,8 +549,9 @@ def euclidean_dist_to_angular_dist(d, r=1):
     theta : float or ndarray
         Angular distance.
     """
-    theta = 2*np.arcsin(d/r/2.)*180./np.pi
+    theta = 2 * np.arcsin(d / r / 2.0) * 180.0 / np.pi
     return theta
+
 
 ## JL
 def sky_bkg_rms(image, mask=None, back_size=128, back_filtersize=5):
@@ -549,14 +568,25 @@ def sky_bkg_rms(image, mask=None, back_size=128, back_filtersize=5):
         Size of the background mesh filter.
     """
     import sep
+
     try:
-        bkg = sep.Background(image, mask=mask, bw=back_size, bh=back_size,
-                             fw=back_filtersize, fh=back_filtersize)
+        bkg = sep.Background(
+            image,
+            mask=mask,
+            bw=back_size,
+            bh=back_size,
+            fw=back_filtersize,
+            fh=back_filtersize,
+        )
     except:
-        bkg = sep.Background(image.byteswap().newbyteorder(), 
-                             mask=mask,
-                             bw=back_size, bh=back_size,
-                             fw=back_filtersize, fh=back_filtersize)
+        bkg = sep.Background(
+            image.byteswap().newbyteorder(),
+            mask=mask,
+            bw=back_size,
+            bh=back_size,
+            fw=back_filtersize,
+            fh=back_filtersize,
+        )
     return bkg.back(), bkg.rms()
 
 
@@ -564,28 +594,29 @@ def calc_psf_sigma(psf):
     """
     Calculate the sigma of the PSF of the image in this exposure.
     Sigma is FWHM / 2.354.
-    
+
     Parameters
     ----------
     psf : numpy.ndarray
         PSF image.
-    
+
     Returns
     -------
     sig : float
         Sigma of the PSF.
     """
     from scipy.interpolate import UnivariateSpline
+
     psf = psf[np.shape(psf)[0] // 2, :]
     px = np.arange(len(psf))
-    spline = UnivariateSpline(px, psf - np.max(psf)/2, s=0) # solve for the half-max
+    spline = UnivariateSpline(px, psf - np.max(psf) / 2, s=0)  # solve for the half-max
     r1 = spline.roots()
     fwhm = abs(r1[0] - r1[1])
     sig = fwhm / 2.354
     return sig
 
 
-def get_mask_array(mi, planes=['CLEANED', 'BRIGHT_OBJECT']):
+def get_mask_array(mi, planes=["CLEANED", "BRIGHT_OBJECT"]):
     """
     Get mask from given planes.
 
@@ -599,11 +630,11 @@ def get_mask_array(mi, planes=['CLEANED', 'BRIGHT_OBJECT']):
     Returns
     -------
     mask : ndarray
-        Mask with masked pixels = 1 and non-masked pixels = 0 
+        Mask with masked pixels = 1 and non-masked pixels = 0
     """
     mask = mi.getMask()
     arr = np.zeros(mask.getArray().shape, dtype=bool)
-    for p in planes: 
+    for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
     return arr
@@ -611,8 +642,8 @@ def get_mask_array(mi, planes=['CLEANED', 'BRIGHT_OBJECT']):
 
 def get_cutout(ra, dec, size, exp):
     """
-    Generate a cutout of exposure. 
-     
+    Generate a cutout of exposure. By JL.
+
     Parameters
     ----------
     center : tuple
@@ -621,19 +652,23 @@ def get_cutout(ra, dec, size, exp):
     size : float
         Size to grow bbox in all directions.
     exp : lsst.afw.image.ExposureF, optional
-        Exposure from which to get cutout.    
+        Exposure from which to get cutout.
     data_id : dict, optional
         HSC data ID.
-    butler : lsst.daf.persistence.Butler, optional
+    butler : lsst.daf.butler.Butler, optional
         the butler.
 
     Returns
     -------
     cutout : lsst.afw.image.ExposureF
-        Desired exposure cutout.
+        Desired exposure cutout. The WCS is also updated.
     """
     import lsst.geom as geom
+
     coord = geom.SpherePoint(geom.Angle(np.deg2rad(ra)), geom.Angle(np.deg2rad(dec)))
     bbox = geom.Extent2I(size, size)
     cutout = exp.getCutout(coord, bbox)
+    bbox = cutout.getBBox()
+    shift = geom.Extent2D(exp.getBBox().getCorners()[0] - bbox.getCorners()[0])
+    cutout.setWcs(cutout.getWcs().copyAtShiftedPixelOrigin(shift))
     return cutout
