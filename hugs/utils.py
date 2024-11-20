@@ -646,17 +646,12 @@ def get_cutout(ra, dec, size, exp):
 
     Parameters
     ----------
-    center : tuple
-        Center of desired cutout in the tract
-        and patch system.
+    ra, dec : float
+        RA and DEC of the center of the cutout.
     size : float
         Size to grow bbox in all directions.
     exp : lsst.afw.image.ExposureF, optional
         Exposure from which to get cutout.
-    data_id : dict, optional
-        HSC data ID.
-    butler : lsst.daf.butler.Butler, optional
-        the butler.
 
     Returns
     -------
