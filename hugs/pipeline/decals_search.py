@@ -212,7 +212,7 @@ def run(cfg, reset_mask_planes=False):
         mask.addMaskPlane('DETECTED')
         footprint_set.setMask(mask, 'DETECTED')
 
-        exp_clean = prim.remove_small_sources_thresholding(exp_clean, cfg.hsc_small_sources_r_max, 
+        exp_clean = prim.remove_small_sources_thresholding(exp_clean, cfg.small_sources_r_max, 
                                                            cfg.pixscale, cfg.rng)
         mi_clean = exp_clean.getMaskedImage()
         mask_clean = mi_clean.getMask()
@@ -253,7 +253,6 @@ def run(cfg, reset_mask_planes=False):
             mi_band = cfg.exp[band].getMaskedImage()
             noise_array = utils.make_noise_image_jl(mi_band, cfg.rng, replace, back_size=128)
             mi_band.getImage().getArray()[replace] = noise_array[replace]
-
 
         ############################################################
         # Detect sources and measure props with SExtractor

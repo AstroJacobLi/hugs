@@ -111,8 +111,7 @@ class PipeConfig(object):
         self.pixscale = params['pixel_scale']
         self.zpt = params['zpt']
 
-        self.hsc_small_sources_r_max = params.pop(
-            'hsc_small_sources_r_max', None)
+        self.small_sources_r_max = params.pop('small_sources_r_max', None)
         self.lsb_smooth_factor = params.pop('lsb_smooth_factor', 1.75)
         self.lsb_smooth_scale = params.pop('lsb_smooth_scale', None)
         # setup for sextractor
