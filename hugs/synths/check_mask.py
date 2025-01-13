@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import numpy as np
 import lsst.geom
-import lsstutils
+from .. import lsstutils
 from ..log import logger
 
 
