@@ -3,8 +3,7 @@ import skimage
 import photutils
 from scipy import signal
 from astropy.utils import lazyproperty
-from photutils import EllipticalAperture
-from photutils import CircularAnnulus, CircularAperture, aperture_photometry
+from photutils.aperture import EllipticalAperture, CircularAperture, aperture_photometry, CircularAnnulus
 
 
 __all__ = ['Morphology']
