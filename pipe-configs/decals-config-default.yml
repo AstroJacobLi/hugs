@@ -2,8 +2,8 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/' 
-hugs_io: '/scratch/gpfs/jiaxuanl/Data/SALAD/hugs-io'
+data_dir: '/scratch/gpfs/JENNYG/jiaxuanl/Data/SALAD/' 
+hugs_io: '/scratch/gpfs/JENNYG/jiaxuanl/Data/SALAD/hugs-io'
 
 mean_seeing_sigma: 1.5
 
@@ -77,10 +77,10 @@ sextractor:
         PIXEL_SCALE: 0.262
         DETECT_THRESH: 2.5
         THRESH_TYPE: "RELATIVE"
-        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/default.conv'
-        FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_5.0_9x9.conv'
-        # FILTER_NAME: '/home/jiaxuanl/Research/Packages/sextractor-2.25.0/config/gauss_6.0_31x31.conv'
-        # FILTER_NAME: "/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io/gauss_5.0_15x15.conv"
+        # FILTER_NAME: 'default.conv'
+        FILTER_NAME: '/scratch/gpfs/JENNYG/jiaxuanl/software/sextractor/config/gauss_5.0_9x9.conv'
+        # FILTER_NAME: 'gauss_6.0_31x31.conv'
+        # FILTER_NAME: "gauss_5.0_15x15.conv"
         FILTER: "Y"
         VERBOSE_TYPE: "QUIET"
         DETECT_MINAREA: 600
@@ -91,7 +91,7 @@ sextractor:
         MEMORY_PIXSTACK: 900000
         WEIGHT_TYPE: "BACKGROUND" # this is IMPORTANT!!
     delete_created_files: False
-    sex_io_dir: '/scratch/gpfs/jiaxuanl/Data/SALAD/sextractor-io'
+    sex_io_dir: '/scratch/gpfs/JENNYG/jiaxuanl/Data/SALAD/sextractor-io'
     verify_max_sep: 4 # We no longer use pixels for separation. Instead, we use `verify_max_sep` times r_eff for each object.
 
 ####################################################

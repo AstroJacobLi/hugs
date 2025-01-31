@@ -168,7 +168,7 @@ class DecalsExposure(object):
     """
 
     def __init__(self, brick, bands='gr', 
-                 data_dir='/scratch/gpfs/jiaxuanl/Data/SALAD/decals/ngc5055/tracts/',
+                 data_dir='/scratch/gpfs/JENNYG/jiaxuanl/Data/SALAD/decals/ngc5055/tracts/',
                  band_detect='g', datatype='image'):
         self.brick = brick
         self.bands = bands
